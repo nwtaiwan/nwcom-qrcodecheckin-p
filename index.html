@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>社區 QR Code 智能報到系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode/html5-qrcode.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            overscroll-behavior: none;
+        }
+        #qr-reader {
+            border: 2px dashed #a7a7a7;
+            border-radius: 1rem;
+            overflow: hidden;
+            transform: translateZ(0); /*
+            -webkit-transform: translateZ(0); */
+        }
+        .scan-result-card {
+            transition: all 0.3s ease-in-out;
+            transform: translateY(20px);
+            opacity: 0;
+            visibility: hidden;
+        }
+        .scan-result-card.show {
+            transform: translateY(0);
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-2xl mx-auto bg-white rounded-2xl shadow-xl p-6 md:p-8">
+        <header class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-slate-800">社區智能報到系統</h1>
+            <p class="text-slate-500 mt-2">請將住戶的 QR Code 對準掃描框</p>
+        </header>
+
+        <main>
+            <!-- 攝影機掃描區 -->
+            <div id="qr-reader" class="w-full aspect-video md:aspect-[4/3] bg-slate-200 flex items-center justify-center">
+                <div class="text-slate-500">正在啟動攝影機...</div>
+            </div>
+            
+            <!-- 報到活動選擇 -->
+            <div class="mt-6">
+                <label for="event-select" class="block text-sm font-medium text-slate-700">目前活動:</label>
+                <select id="event-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm">
+                    <option>114年區分所有權人會議</option>
+                    <option>中秋聯歡晚會</option>
+                    <option>防災社區講習</option>
+                </select>
+            </div>
+            
+            <!-- 掃描結果顯示區 -->
+            <div id="scan-result-card" class="scan-result-card mt-6 p-5 rounded-lg shadow-md">
+                <h3 id="result-title" class="text-xl font-bold text-center"></h3>
+                <p id="result-message" class="text-center mt-2"></p>
+            </div>
+
+            <!-- 手動輸入區 -->
+            <div class="mt-6 border-t pt-4">
+                 <p class="text-center text-slate-600 mb-2">無法掃描？</p>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input type="text" id="manual-input" placeholder="請輸入戶號，例如: A-101" class="flex-grow w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    <button id="manual-submit" class="w-full sm:w-auto bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition">
+                        手動報到
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <footer class="text-center mt-8 text-slate-500 text-sm">
+        <p>&copy; 2025 智能社區管理系統. All Rights Reserved.</p>
+    </footer>
+
+    <script>
+        // --- 模擬後端資料庫 ---
+        const residents = {
+            "resident-a101-uuid-1111-xxxx": { household: "A-101", name: "王大明" },
+            "resident-b202-uuid-2222-yyyy": { household: "B-202", name: "陳小姐" },
+            "resident-c303-uuid-3333-zzzz": { household: "C-303", name: "李先生" },
+        };
+        // 用來記錄每個活動的報到狀況
+        let attendance = {};
+
+        // --- DOM 元素 ---
+        const resultCard = document.getElementById('scan-result-card');
+        const resultTitle = document.getElementById('result-title');
+        const resultMessage = document.getElementById('result-message');
+        const manualInput = document.getElementById('manual-input');
+        const manualSubmitBtn = document.getElementById('manual-submit');
+        const eventSelect = document.getElementById('event-select');
+
+        // --- 音效模組 ---
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.5, audioContext.currentTime + 0.01);
+
+            if (type === 'success') {
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+                setTimeout(() => oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime), 100); // E5
+            } else if (type === 'warning') {
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4
+                setTimeout(() => oscillator.frequency.setValueAtTime(349.23, audioContext.currentTime), 100); // F4
+            } else { // error
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(261.63, audioContext.currentTime); // C4
+            }
+
+            oscillator.start(audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.2);
+            oscillator.stop(audioContext.currentTime + 0.2);
+        }
+
+        // --- 核心報到邏輯 ---
+        function processCheckIn(qrCodeData) {
+            const selectedEvent = eventSelect.value;
+
+            // 初始化活動報到紀錄
+            if (!attendance[selectedEvent]) {
+                attendance[selectedEvent] = {};
+            }
+
+            const resident = residents[qrCodeData];
+
+            if (resident) {
+                if (attendance[selectedEvent][qrCodeData]) {
+                    // 重複報到
+                    const checkInTime = attendance[selectedEvent][qrCodeData].time;
+                    showResult('warning', '重複報到', `${resident.household} ${resident.name} 已於 ${checkInTime} 報到。`);
+                } else {
+                    // 報到成功
+                    const now = new Date();
+                    const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+                    attendance[selectedEvent][qrCodeData] = { ...resident, time: timeString };
+                    showResult('success', '報到成功！', `${resident.household} ${resident.name}，歡迎您！`);
+                }
+            } else {
+                // 無效 QR Code
+                showResult('error', '無效的 QR Code', '查無此住戶資料，請確認 QR Code 是否正確。');
+            }
+        }
+
+        // --- UI 更新函式 ---
+        function showResult(type, title, message) {
+            // 清除舊的樣式
+            resultCard.classList.remove('bg-green-100', 'text-green-800', 'bg-yellow-100', 'text-yellow-800', 'bg-red-100', 'text-red-800');
+
+            let bgColor, textColor;
+            switch (type) {
+                case 'success':
+                    bgColor = 'bg-green-100';
+                    textColor = 'text-green-800';
+                    break;
+                case 'warning':
+                    bgColor = 'bg-yellow-100';
+                    textColor = 'text-yellow-800';
+                    break;
+                case 'error':
+                    bgColor = 'bg-red-100';
+                    textColor = 'text-red-800';
+                    break;
+            }
+
+            resultCard.classList.add(bgColor, textColor, 'show');
+            resultTitle.textContent = title;
+            resultMessage.textContent = message;
+
+            playSound(type);
+
+            // 5秒後自動隱藏
+            setTimeout(() => {
+                resultCard.classList.remove('show');
+            }, 5000);
+        }
+
+        // --- 手動報到處理 ---
+        manualSubmitBtn.addEventListener('click', () => {
+            const inputHousehold = manualInput.value.trim().toUpperCase();
+            if (!inputHousehold) {
+                showResult('error', '輸入錯誤', '戶號不能為空。');
+                return;
+            }
+
+            const foundQrCode = Object.keys(residents).find(key => residents[key].household === inputHousehold);
+
+            if (foundQrCode) {
+                processCheckIn(foundQrCode);
+            } else {
+                showResult('error', '查無此戶', `找不到戶號為 ${inputHousehold} 的住戶。`);
+            }
+            manualInput.value = '';
+        });
+
+        // --- QR Code 掃描器設定 ---
+        function onScanSuccess(decodedText, decodedResult) {
+            // 避免短時間內重複觸發
+            if (window.lastScanTime && (Date.now() - window.lastScanTime < 3000)) {
+                return;
+            }
+            window.lastScanTime = Date.now();
+            processCheckIn(decodedText);
+        }
+
+        function onScanFailure(error) {
+            // 可以在此處處理掃描失敗的日誌，但通常不需要顯示給用戶
+        }
+
+        // 將掃描器初始化包裝成一個函式
+        function initializeScanner() {
+            const qrReaderDiv = document.getElementById('qr-reader');
+            // 清空舊訊息
+            qrReaderDiv.innerHTML = "<div class='text-slate-500'>正在啟動攝影機...</div>"; 
+            
+            const html5QrcodeScanner = new Html5Qrcode("qr-reader");
+
+            Html5Qrcode.getCameras().then(devices => {
+                if (devices && devices.length) {
+                    html5QrcodeScanner.start(
+                        { facingMode: "environment" },
+                        {
+                            fps: 10,
+                            qrbox: (viewfinderWidth, viewfinderHeight) => {
+                                let minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                                let qrboxSize = Math.floor(minEdge * 0.7);
+                                return { width: qrboxSize, height: qrboxSize };
+                            }
+                        },
+                        onScanSuccess,
+                        onScanFailure
+                    ).catch(err => {
+                        console.error("無法啟動掃描器", err);
+                        qrReaderDiv.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-red-500 p-4 text-center"><p>無法啟動攝影機，請檢查瀏覽器權限。</p></div>`;
+                    });
+                } else {
+                     qrReaderDiv.innerHTML = `<div class="flex items-center justify-center h-full text-slate-600 p-4">找不到可用的攝影機裝置。</div>`;
+                }
+            }).catch(err => {
+                console.error("請求攝影機權限時發生錯誤", err);
+                qrReaderDiv.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full text-red-500 p-4 text-center">
+                        <p class="font-semibold">請求攝影機權限失敗</p>
+                        <ul class="mt-2 text-sm text-slate-600 list-disc list-inside text-left max-w-xs mx-auto">
+                           <li>請確認網址是以 <b>https://</b> 開頭。</li>
+                           <li>您可能已封鎖攝影機權限。請點擊網址列旁的攝影機圖示，並選擇「允許」。</li>
+                           <li>請檢查是否有瀏覽器擴充功能阻擋了攝影機存取。</li>
+                        </ul>
+                        <button id="retry-camera-btn" class="mt-4 bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700">
+                            設定完成後，點此重試
+                        </button>
+                    </div>`;
+                document.getElementById('retry-camera-btn').addEventListener('click', initializeScanner);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', (event) => {
+            initializeScanner();
+        });
+    </script>
+</body>
+</html>
