@@ -1,278 +1,1609 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>社區 QR Code 智能報到系統</title>
+    <title>西北社區QR Code報到系統</title>
+    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/html5-qrcode/html5-qrcode.min.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- QR Code generation library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <!-- QR Code scanning library -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- Papa Parse for robust CSV handling -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
     <style>
+        /* Custom styles */
         body {
-            font-family: 'Noto Sans TC', sans-serif;
-            overscroll-behavior: none;
+            font-family: 'Inter', '微軟正黑體', sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
-        #qr-reader {
-            border: 2px dashed #a7a7a7;
-            border-radius: 1rem;
+        #reader {
+            width: 100%;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.5rem;
             overflow: hidden;
-            transform: translateZ(0); /*
-            -webkit-transform: translateZ(0); */
         }
-        .scan-result-card {
-            transition: all 0.3s ease-in-out;
-            transform: translateY(20px);
-            opacity: 0;
-            visibility: hidden;
+        /* Tab styling */
+        .tab-button {
+            @apply px-4 py-2 text-sm font-medium text-gray-600 rounded-md transition-colors duration-200 focus:outline-none;
         }
-        .scan-result-card.show {
-            transform: translateY(0);
-            opacity: 1;
-            visibility: visible;
+        .tab-button:hover {
+            @apply bg-gray-200 text-gray-800;
+        }
+        .tab-button.active {
+            @apply bg-white text-blue-600 shadow-sm;
+        }
+
+        .status-filter-button.active {
+            @apply border-blue-500 text-blue-600;
+        }
+
+        /* Custom animation for feedback messages */
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateY(-20px); }
+            10%, 90% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-20px); }
+        }
+        .feedback-animation {
+            animation: fadeInOut 3s ease-in-out forwards;
+        }
+        /* Print-friendly styles for QR codes */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #qr-code-print-area, #qr-code-print-area * {
+                visibility: visible;
+            }
+            #qr-code-print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+            .qr-code-item {
+                page-break-inside: avoid;
+            }
         }
     </style>
 </head>
-<body class="bg-slate-100 flex flex-col items-center justify-center min-h-screen p-4">
+<body class="bg-gray-100">
 
-    <div class="w-full max-w-2xl mx-auto bg-white rounded-2xl shadow-xl p-6 md:p-8">
-        <header class="text-center mb-6">
-            <h1 class="text-3xl font-bold text-slate-800">社區智能報到系統</h1>
-            <p class="text-slate-500 mt-2">請將住戶的 QR Code 對準掃描框</p>
-        </header>
+    <div id="app-container" class="w-full max-w-5xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden my-4">
 
-        <main>
-            <!-- 攝影機掃描區 -->
-            <div id="qr-reader" class="w-full aspect-video md:aspect-[4/3] bg-slate-200 flex items-center justify-center">
-                <div class="text-slate-500">正在啟動攝影機...</div>
+        <!-- ===== Login View ===== -->
+        <div id="login-view" class="p-8">
+            <div class="text-center mb-8">
+                <i class="fas fa-qrcode text-5xl text-red-600"></i>
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mt-4">西北社區QR Code報到系統</h1>
             </div>
             
-            <!-- 報到活動選擇 -->
-            <div class="mt-6">
-                <label for="event-select" class="block text-sm font-medium text-slate-700">目前活動:</label>
-                <select id="event-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm">
-                    <option>114年區分所有權人會議</option>
-                    <option>中秋聯歡晚會</option>
-                    <option>防災社區講習</option>
-                </select>
-            </div>
-            
-            <!-- 掃描結果顯示區 -->
-            <div id="scan-result-card" class="scan-result-card mt-6 p-5 rounded-lg shadow-md">
-                <h3 id="result-title" class="text-xl font-bold text-center"></h3>
-                <p id="result-message" class="text-center mt-2"></p>
-            </div>
-
-            <!-- 手動輸入區 -->
-            <div class="mt-6 border-t pt-4">
-                 <p class="text-center text-slate-600 mb-2">無法掃描？</p>
+            <div class="max-w-sm mx-auto">
+                <div class="mb-4">
+                    <div class="flex justify-between items-center">
+                        <label for="account" class="block text-sm font-medium text-gray-700">登入帳號</label>
+                        <div class="flex items-center">
+                            <input id="remember-me" type="checkbox" class="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded">
+                            <label for="remember-me" class="ml-2 block text-sm text-gray-700">記住我</label>
+                        </div>
+                    </div>
+                    <input type="text" id="account" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500" placeholder="請輸入英數字帳號">
+                </div>
+                <div class="mb-6">
+                    <label for="password" class="block text-sm font-medium text-gray-700">密碼</label>
+                    <div class="relative mt-1">
+                        <input type="password" id="password" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 pr-10" placeholder="********">
+                        <button type="button" id="toggle-password-visibility" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 focus:outline-none">
+                            <i class="fas fa-eye" id="password-toggle-icon"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="auth-error" class="text-red-500 text-sm mb-4 text-center hidden"></div>
                 <div class="flex flex-col sm:flex-row gap-2">
-                    <input type="text" id="manual-input" placeholder="請輸入戶號，例如: A-101" class="flex-grow w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                    <button id="manual-submit" class="w-full sm:w-auto bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition">
-                        手動報到
-                    </button>
+                    <button id="login-btn" class="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition duration-150 ease-in-out">登入</button>
                 </div>
             </div>
-        </main>
+        </div>
+
+        <!-- ===== Community Selection View ===== -->
+        <div id="community-selection-view" class="p-8 hidden">
+            <header class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">選擇社區會議 / 活動</h1>
+                <button id="logout-btn-main" class="text-gray-500 hover:text-red-600 focus:outline-none">
+                    <i class="fas fa-sign-out-alt mr-1"></i>登出
+                </button>
+            </header>
+            
+            <div id="community-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                <!-- Community cards will be inserted here -->
+                <div id="loading-communities" class="text-center p-4 text-gray-500 col-span-full">正在載入您的社區...</div>
+            </div>
+
+            <div class="bg-gray-50 p-6 rounded-lg">
+                <h2 class="text-xl font-semibold text-gray-700 mb-3">建立新社區</h2>
+                <form id="create-community-form" class="flex items-end gap-4">
+                    <div class="flex-grow">
+                        <label for="new-community-name" class="block text-sm font-medium text-gray-700">新社區名稱</label>
+                        <input type="text" id="new-community-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    <button type="submit" class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-400">建立</button>
+                </form>
+                <div id="create-community-error" class="text-red-500 text-sm mt-2"></div>
+            </div>
+        </div>
+
+        <!-- ===== Main App View (Community Specific) ===== -->
+        <div id="main-view" class="hidden">
+            <!-- Header -->
+            <header class="bg-gray-50 p-4 border-b flex justify-between items-center">
+                <div>
+                    <h2 id="header-community-name" class="text-xl font-bold text-gray-800">社區名稱</h2>
+                    <p id="header-event-name" class="text-sm text-gray-500">會議活動</p>
+                </div>
+                <div>
+                    <button id="back-to-communities-btn" class="text-sm text-gray-600 hover:text-blue-600 mr-4"><i class="fas fa-arrow-left mr-1"></i>返回社區列表</button>
+                    <button id="logout-btn" class="text-gray-500 hover:text-red-600 focus:outline-none">
+                        <i class="fas fa-sign-out-alt mr-1"></i>登出
+                    </button>
+                </div>
+            </header>
+
+            <!-- Tabs -->
+            <nav class="bg-gray-100 p-1">
+                <div class="flex space-x-1" id="tabs">
+                    <button data-tab="setup" class="tab-button active"><i class="fas fa-cog mr-2"></i>活動設定</button>
+                    <button data-tab="residents" class="tab-button"><i class="fas fa-users mr-2"></i>住戶管理</button>
+                    <button data-tab="scanner" class="tab-button"><i class="fas fa-qrcode mr-2"></i>掃碼報到</button>
+                    <button data-tab="status" class="tab-button"><i class="fas fa-chart-pie mr-2"></i>報到狀況</button>
+                    <button data-tab="users" class="tab-button"><i class="fas fa-user-plus mr-2"></i>帳號管理</button>
+                </div>
+            </nav>
+
+            <!-- Tab Content -->
+            <main id="tab-content" class="p-6" style="min-height: 60vh;">
+                <!-- Setup Tab -->
+                <div id="setup-tab" class="tab-pane">
+                     <h3 class="text-2xl font-semibold mb-4 text-gray-700">活動設定</h3>
+                    <div class="space-y-4 max-w-lg">
+                        <div>
+                            <label for="community-name-display" class="block text-sm font-medium text-gray-700">目前管理的社區</label>
+                            <input type="text" id="community-name-display" class="mt-1 block w-full px-3 py-2 border bg-gray-100 border-gray-300 rounded-md" readonly>
+                        </div>
+                        <div>
+                            <label for="event-name" class="block text-sm font-medium text-gray-700">會議/活動名稱</label>
+                            <input type="text" id="event-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="event-date" class="block text-sm font-medium text-gray-700">日期與時間</label>
+                            <input type="datetime-local" id="event-date" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="event-ratio-threshold" class="block text-sm font-medium text-gray-700">區分權比例設定 (%)</label>
+                            <input type="number" id="event-ratio-threshold" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="例如：50">
+                        </div>
+                        <button id="save-config-btn" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">儲存設定</button>
+                        <p id="config-feedback" class="text-green-600 text-sm mt-2"></p>
+                    </div>
+                </div>
+
+                <!-- Residents Tab -->
+                <div id="residents-tab" class="tab-pane hidden">
+                    <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
+                        <h3 class="text-2xl font-semibold text-gray-700">住戶管理</h3>
+                        <div class="flex gap-2 flex-wrap">
+                            <input type="file" id="csv-import-input" class="hidden" accept=".csv">
+                            <button id="import-csv-btn" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"><i class="fas fa-file-import mr-2"></i>匯入 CSV</button>
+                            <button id="export-csv-btn" class="bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700"><i class="fas fa-file-export mr-2"></i>匯出 CSV</button>
+                            <button id="view-qrcodes-btn" class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"><i class="fas fa-print mr-2"></i>產生 & 列印 QR Code</button>
+                            <button id="delete-all-residents-btn" class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700"><i class="fas fa-trash-alt mr-2"></i>全部刪除</button>
+                        </div>
+                    </div>
+                    <!-- Add Resident Form -->
+                    <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                        <h4 class="font-semibold mb-2">新增住戶</h4>
+                        <form id="add-resident-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div>
+                                <label for="resident-qrcode" class="block text-sm font-medium text-gray-700">QR Code 生成碼 (唯一)</label>
+                                <input type="text" id="resident-qrcode" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                            </div>
+                            <div>
+                                <label for="resident-household" class="block text-sm font-medium text-gray-700">戶號</label>
+                                <input type="text" id="resident-household" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                            </div>
+                            <div>
+                                <label for="resident-name" class="block text-sm font-medium text-gray-700">姓名</label>
+                                <input type="text" id="resident-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                            </div>
+                            <div>
+                                <label for="resident-address" class="block text-sm font-medium text-gray-700">地址</label>
+                                <input type="text" id="resident-address" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="resident-area" class="block text-sm font-medium text-gray-700">坪數</label>
+                                <input type="text" id="resident-area" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="resident-ratio" class="block text-sm font-medium text-gray-700">區分權比例</label>
+                                <input type="text" id="resident-ratio" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                             <div class="self-end col-span-full">
+                                <button type="submit" class="w-full sm:w-auto bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">新增</button>
+                                <span id="add-resident-feedback" class="ml-4 text-sm"></span>
+                            </div>
+                        </form>
+                    </div>
+                    <!-- Resident List -->
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white rounded-lg shadow">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="text-left py-3 px-4 font-semibold text-sm">QR Code</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-sm">戶號</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-sm">姓名</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-sm">地址</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-sm">坪數</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-sm">區分權比例</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-sm">手動報到</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-sm">刪除</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resident-list" class="text-gray-700"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Scanner Tab -->
+                <div id="scanner-tab" class="tab-pane hidden">
+                     <div class="flex flex-col md:flex-row gap-6">
+                        <div class="w-full md:w-1/2">
+                            <h3 class="text-2xl font-semibold mb-2 text-gray-700">掃碼報到</h3>
+                            <p class="text-gray-500 mb-4">將住戶的 QR code 對準下方掃描框</p>
+                            <div id="reader-container" class="relative">
+                                <div id="reader"></div>
+                                <div id="feedback-overlay" class="absolute inset-0 flex items-center justify-center pointer-events-none"></div>
+                            </div>
+                            <div id="scanner-error" class="text-red-500 mt-2"></div>
+                            <button id="stop-scanner-btn" class="hidden mt-4 w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700">停止掃描</button>
+                        </div>
+                        <div class="w-full md:w-1/2">
+                            <h4 class="text-xl font-semibold mb-4 text-gray-700">最近報到紀錄</h4>
+                            <div id="scan-log" class="space-y-2 h-96 overflow-y-auto bg-gray-50 p-3 rounded-lg"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status Tab -->
+                <div id="status-tab" class="tab-pane hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex items-center gap-4">
+                             <h3 class="text-2xl font-semibold text-gray-700">即時報到狀況</h3>
+                             <span id="quorum-met-indicator" class="hidden text-green-600 font-bold text-lg">已達法定開會人數</span>
+                        </div>
+                        <button id="share-status-btn" class="text-blue-600 hover:text-blue-800">
+                            <i class="fas fa-share-alt text-xl"></i>
+                        </button>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg mb-6 shadow grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                        <div>
+                            <p class="text-sm text-gray-500">總戶數</p>
+                            <p id="total-residents" class="text-3xl font-bold text-gray-800">0</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">已報到</p>
+                            <p id="checked-in-count" class="text-3xl font-bold text-green-600">0</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">未報到</p>
+                            <p id="not-checked-in-count" class="text-3xl font-bold text-red-600">0</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">區分權報到率</p>
+                            <p id="ratio-check-in-percentage" class="text-3xl font-bold text-purple-600">0%</p>
+                        </div>
+                        <div class="col-span-2 md:col-span-4 mt-2">
+                             <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-b border-gray-200 mb-4">
+                        <nav class="-mb-px flex space-x-8" id="status-filter-tabs">
+                            <button data-filter="checkedIn" class="status-filter-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm active">已報到</button>
+                            <button data-filter="notCheckedIn" class="status-filter-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">未報到</button>
+                        </nav>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white rounded-lg shadow">
+                            <thead id="status-table-head" class="bg-gray-100">
+                                <!-- Headers will be dynamically inserted here -->
+                            </thead>
+                            <tbody id="status-list" class="text-gray-700"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- User Management Tab -->
+                <div id="users-tab" class="tab-pane hidden">
+                    <h3 class="text-2xl font-semibold mb-4 text-gray-700">後台帳號管理</h3>
+                    <div class="bg-gray-50 p-6 rounded-lg max-w-lg">
+                        <h4 class="font-semibold mb-3 text-gray-800">建立新工作人員帳號</h4>
+                        <form id="create-user-form" class="space-y-4">
+                            <div>
+                                <label for="new-account-name" class="block text-sm font-medium text-gray-700">新帳號 (僅限英數字)</label>
+                                <input type="text" id="new-account-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                            </div>
+                            <div>
+                                <label for="new-account-password" class="block text-sm font-medium text-gray-700">新密碼 (至少6個字元)</label>
+                                <input type="password" id="new-account-password" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                            </div>
+                            <button type="submit" class="w-full sm:w-auto bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-400">建立帳號</button>
+                        </form>
+                        <div id="create-user-feedback" class="text-sm mt-4"></div>
+                    </div>
+                     <div class="mt-6 p-4 border-l-4 border-yellow-400 bg-yellow-50 rounded">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fa fa-info-circle text-yellow-500"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-yellow-700">
+                                    請注意：基於安全考量，此介面僅提供「新增」帳號功能。若需「查詢」或「刪除」帳號，請登入您的 Firebase 專案後台進行管理。
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+
+        <!-- ===== Public Status View ===== -->
+        <div id="public-status-view" class="p-8 hidden">
+             <!-- Content will be injected here -->
+        </div>
+
+        <!-- Modals and other hidden elements -->
+        <div id="qrcode-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+            <div class="bg-white rounded-lg shadow-xl w-11/12 max-w-5xl max-h-[90vh] flex flex-col">
+                <div class="p-4 border-b flex justify-between items-center">
+                    <h3 class="text-xl font-semibold">住戶 QR Code</h3>
+                    <div>
+                        <button id="print-qrcodes-btn" class="mr-2 bg-blue-600 text-white py-1 px-3 rounded-md hover:bg-blue-700"><i class="fas fa-print mr-1"></i>列印</button>
+                        <button id="close-qrcode-modal-btn" class="text-gray-500 hover:text-gray-800 text-2xl leading-none">&times;</button>
+                    </div>
+                </div>
+                <div id="qr-code-print-area" class="p-6 overflow-y-auto">
+                    <div id="qrcode-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+                </div>
+            </div>
+        </div>
+        <div id="share-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+            <div class="bg-white rounded-lg shadow-xl w-11/12 max-w-sm p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800">分享即時報到狀況</h3>
+                    <button id="close-share-modal-btn" class="text-gray-500 hover:text-gray-800 text-2xl leading-none">&times;</button>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">任何人都可以透過以下連結或 QR Code 查看此活動的即時報到統計，無需登入。</p>
+                <div id="share-qrcode" class="flex justify-center mb-4"></div>
+                <div class="mb-4">
+                    <label for="share-url" class="block text-xs font-medium text-gray-500">公開連結</label>
+                    <input type="text" id="share-url" class="mt-1 block w-full px-3 py-2 border bg-gray-100 border-gray-300 rounded-md shadow-sm text-sm" readonly>
+                </div>
+                <button id="copy-share-url-btn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">複製連結</button>
+            </div>
+        </div>
+        <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+            <div class="bg-white rounded-lg shadow-xl w-11/12 max-w-sm p-6">
+                <h3 id="confirm-modal-title" class="text-lg font-semibold text-gray-800 mb-4"></h3>
+                <p id="confirm-modal-text" class="text-gray-600 mb-6"></p>
+                <div class="flex justify-end gap-4">
+                    <button id="confirm-modal-cancel-btn" class="bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300">取消</button>
+                    <button id="confirm-modal-ok-btn" class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700"></button>
+                </div>
+            </div>
+        </div>
+        <div id="info-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+            <div class="bg-white rounded-lg shadow-xl w-11/12 max-w-sm p-6 text-center">
+                <h3 id="info-modal-title" class="text-lg font-semibold text-gray-800 mb-4"></h3>
+                <p id="info-modal-text" class="text-gray-600 mb-6" style="white-space: pre-wrap; text-align: left;"></p>
+                <div class="flex justify-center">
+                    <button id="info-modal-ok-btn" class="bg-blue-600 text-white py-2 px-6 rounded-md hover:bg-blue-700">了解</button>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <footer class="text-center mt-8 text-slate-500 text-sm">
-        <p>&copy; 2025 智能社區管理系統. All Rights Reserved.</p>
-    </footer>
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, addDoc, collection, onSnapshot, query, updateDoc, deleteDoc, serverTimestamp, where, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    <script>
-        // --- 模擬後端資料庫 ---
-        const residents = {
-            "resident-a101-uuid-1111-xxxx": { household: "A-101", name: "王大明" },
-            "resident-b202-uuid-2222-yyyy": { household: "B-202", name: "陳小姐" },
-            "resident-c303-uuid-3333-zzzz": { household: "C-303", name: "李先生" },
+        // --- Firebase Configuration ---
+        const firebaseConfig = {
+          apiKey: "AIzaSyA66MZ0dfxSrWgtCiIyNW4GjTo0n1s7psg",
+          authDomain: "nwcom-qrcodecheckin.firebaseapp.com",
+          projectId: "nwcom-qrcodecheckin",
+          storageBucket: "nwcom-qrcodecheckin.firebasestorage.app",
+          messagingSenderId: "700787049117",
+          appId: "1:700787049117:web:13ccf14c5c41abff6b4a74",
+          measurementId: "G-E857BJVJMD"
         };
-        // 用來記錄每個活動的報到狀況
-        let attendance = {};
+        
+        // --- App Initialization ---
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        // Secondary app for user creation to not interfere with admin's session
+        const secondaryApp = initializeApp(firebaseConfig, "secondary-app-for-user-creation");
+        const secondaryAuth = getAuth(secondaryApp);
 
-        // --- DOM 元素 ---
-        const resultCard = document.getElementById('scan-result-card');
-        const resultTitle = document.getElementById('result-title');
-        const resultMessage = document.getElementById('result-message');
-        const manualInput = document.getElementById('manual-input');
-        const manualSubmitBtn = document.getElementById('manual-submit');
-        const eventSelect = document.getElementById('event-select');
 
-        // --- 音效模組 ---
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        // --- Public View Logic ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const publicCommunityId = urlParams.get('public_status');
 
-        function playSound(type) {
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
+        if (publicCommunityId) {
+             // Show only the public view and hide the main app
+            document.getElementById('app-container').classList.add('hidden');
+            const publicViewContainer = document.createElement('div');
+            publicViewContainer.id = 'public-view-container';
+            publicViewContainer.className = 'w-full max-w-2xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden my-4 p-8';
+            document.body.appendChild(publicViewContainer);
+
+            publicViewContainer.innerHTML = `<p class="text-center text-gray-500">正在載入即時報到狀況...</p>`;
+
+            // IMPORTANT: For this public view to work, you MUST set Firestore Security Rules
+            // to allow public reads on the 'communities/{communityId}/eventConfig/current'
+            // and 'communities/{communityId}/residents' paths.
+            // Example Rule:
+            // match /communities/{communityId}/{document=**} {
+            //   allow read: if true;
+            //   allow write: if request.auth != null; // Or more specific rules
+            // }
+
+            const communityRef = doc(db, 'communities', publicCommunityId);
+            const configRef = doc(db, 'communities', publicCommunityId, 'eventConfig', 'current');
+            const residentsColRef = collection(db, 'communities', publicCommunityId, 'residents');
+
+            let configData = {};
+            let publicResidents = [];
             
-            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-            gainNode.gain.linearRampToValueAtTime(0.5, audioContext.currentTime + 0.01);
-
-            if (type === 'success') {
-                oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
-                setTimeout(() => oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime), 100); // E5
-            } else if (type === 'warning') {
-                oscillator.type = 'triangle';
-                oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4
-                setTimeout(() => oscillator.frequency.setValueAtTime(349.23, audioContext.currentTime), 100); // F4
-            } else { // error
-                oscillator.type = 'square';
-                oscillator.frequency.setValueAtTime(261.63, audioContext.currentTime); // C4
-            }
-
-            oscillator.start(audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.2);
-            oscillator.stop(audioContext.currentTime + 0.2);
-        }
-
-        // --- 核心報到邏輯 ---
-        function processCheckIn(qrCodeData) {
-            const selectedEvent = eventSelect.value;
-
-            // 初始化活動報到紀錄
-            if (!attendance[selectedEvent]) {
-                attendance[selectedEvent] = {};
-            }
-
-            const resident = residents[qrCodeData];
-
-            if (resident) {
-                if (attendance[selectedEvent][qrCodeData]) {
-                    // 重複報到
-                    const checkInTime = attendance[selectedEvent][qrCodeData].time;
-                    showResult('warning', '重複報到', `${resident.household} ${resident.name} 已於 ${checkInTime} 報到。`);
-                } else {
-                    // 報到成功
-                    const now = new Date();
-                    const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-                    attendance[selectedEvent][qrCodeData] = { ...resident, time: timeString };
-                    showResult('success', '報到成功！', `${resident.household} ${resident.name}，歡迎您！`);
-                }
+            const communitySnap = await getDoc(communityRef);
+            if (!communitySnap.exists()) {
+                 publicViewContainer.innerHTML = `<p class="text-center text-red-500">找不到指定的活動資料。</p>`;
             } else {
-                // 無效 QR Code
-                showResult('error', '無效的 QR Code', '查無此住戶資料，請確認 QR Code 是否正確。');
+                 onSnapshot(configRef, (docSnap) => {
+                    configData = docSnap.exists() ? docSnap.data() : {};
+                    renderPublicStatus(communitySnap.data(), configData, publicResidents, publicViewContainer);
+                 });
+                 onSnapshot(query(residentsColRef), (snapshot) => {
+                    publicResidents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderPublicStatus(communitySnap.data(), configData, publicResidents, publicViewContainer);
+                 });
             }
+
+        } else {
+            // --- App Initialization (Private/Logged-in view) ---
+            initializeAppLogic();
         }
 
-        // --- UI 更新函式 ---
-        function showResult(type, title, message) {
-            // 清除舊的樣式
-            resultCard.classList.remove('bg-green-100', 'text-green-800', 'bg-yellow-100', 'text-yellow-800', 'bg-red-100', 'text-red-800');
+        function renderPublicStatus(communityData, configData, residents, container) {
+            const total = residents.length;
+            const checkedInList = residents.filter(r => r.isCheckedIn);
+            const checkedInCount = checkedInList.length;
+            const notCheckedInCount = total - checkedInCount;
 
-            let bgColor, textColor;
-            switch (type) {
-                case 'success':
-                    bgColor = 'bg-green-100';
-                    textColor = 'text-green-800';
-                    break;
-                case 'warning':
-                    bgColor = 'bg-yellow-100';
-                    textColor = 'text-yellow-800';
-                    break;
-                case 'error':
-                    bgColor = 'bg-red-100';
-                    textColor = 'text-red-800';
-                    break;
-            }
+            const safeParseFloat = (val) => {
+                const num = parseFloat(val);
+                return isNaN(num) ? 0 : num;
+            };
+            const totalRatio = residents.reduce((sum, r) => sum + safeParseFloat(r.ratio), 0);
+            const checkedInRatio = checkedInList.reduce((sum, r) => sum + safeParseFloat(r.ratio), 0);
+            const ratioPercentage = totalRatio > 0 ? Math.round((checkedInRatio / totalRatio) * 100) : 0;
+            const threshold = safeParseFloat(configData.ratioThreshold);
+            const isQuorumMet = threshold > 0 && ratioPercentage >= threshold;
 
-            resultCard.classList.add(bgColor, textColor, 'show');
-            resultTitle.textContent = title;
-            resultMessage.textContent = message;
-
-            playSound(type);
-
-            // 5秒後自動隱藏
-            setTimeout(() => {
-                resultCard.classList.remove('show');
-            }, 5000);
+            container.innerHTML = `
+                <div class="text-center mb-6">
+                    <h1 class="text-2xl font-bold text-gray-800">${communityData.name}</h1>
+                    <p class="text-lg text-gray-600">${configData.eventName || '報到狀況'}</p>
+                    <p class="text-sm text-gray-400">最後更新: ${new Date().toLocaleTimeString('zh-TW')}</p>
+                </div>
+                 <div class="bg-gray-50 p-4 rounded-lg mb-6 shadow grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div>
+                        <p class="text-sm text-gray-500">總戶數</p>
+                        <p class="text-3xl font-bold text-gray-800">${total}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">已報到</p>
+                        <p class="text-3xl font-bold text-green-600">${checkedInCount}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">未報到</p>
+                        <p class="text-3xl font-bold text-red-600">${notCheckedInCount}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">區分權報到率</p>
+                        <p class="text-3xl font-bold text-purple-600">${ratioPercentage}%</p>
+                    </div>
+                </div>
+                ${isQuorumMet ? '<p class="text-center text-2xl font-bold text-green-600 my-4">已達法定開會人數</p>' : ''}
+            `;
         }
 
-        // --- 手動報到處理 ---
-        manualSubmitBtn.addEventListener('click', () => {
-            const inputHousehold = manualInput.value.trim().toUpperCase();
-            if (!inputHousehold) {
-                showResult('error', '輸入錯誤', '戶號不能為空。');
-                return;
-            }
 
-            const foundQrCode = Object.keys(residents).find(key => residents[key].household === inputHousehold);
-
-            if (foundQrCode) {
-                processCheckIn(foundQrCode);
-            } else {
-                showResult('error', '查無此戶', `找不到戶號為 ${inputHousehold} 的住戶。`);
-            }
-            manualInput.value = '';
-        });
-
-        // --- QR Code 掃描器設定 ---
-        function onScanSuccess(decodedText, decodedResult) {
-            // 避免短時間內重複觸發
-            if (window.lastScanTime && (Date.now() - window.lastScanTime < 3000)) {
-                return;
-            }
-            window.lastScanTime = Date.now();
-            processCheckIn(decodedText);
-        }
-
-        function onScanFailure(error) {
-            // 可以在此處處理掃描失敗的日誌，但通常不需要顯示給用戶
-        }
-
-        // 將掃描器初始化包裝成一個函式
-        function initializeScanner() {
-            const qrReaderDiv = document.getElementById('qr-reader');
-            // 清空舊訊息
-            qrReaderDiv.innerHTML = "<div class='text-slate-500'>正在啟動攝影機...</div>"; 
-            
-            const html5QrcodeScanner = new Html5Qrcode("qr-reader");
-
-            Html5Qrcode.getCameras().then(devices => {
-                if (devices && devices.length) {
-                    html5QrcodeScanner.start(
-                        { facingMode: "environment" },
-                        {
-                            fps: 10,
-                            qrbox: (viewfinderWidth, viewfinderHeight) => {
-                                let minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                                let qrboxSize = Math.floor(minEdge * 0.7);
-                                return { width: qrboxSize, height: qrboxSize };
-                            }
-                        },
-                        onScanSuccess,
-                        onScanFailure
-                    ).catch(err => {
-                        console.error("無法啟動掃描器", err);
-                        qrReaderDiv.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-red-500 p-4 text-center"><p>無法啟動攝影機，請檢查瀏覽器權限。</p></div>`;
-                    });
-                } else {
-                     qrReaderDiv.innerHTML = `<div class="flex items-center justify-center h-full text-slate-600 p-4">找不到可用的攝影機裝置。</div>`;
-                }
-            }).catch(err => {
-                console.error("請求攝影機權限時發生錯誤", err);
-                qrReaderDiv.innerHTML = `
-                    <div class="flex flex-col items-center justify-center h-full text-red-500 p-4 text-center">
-                        <p class="font-semibold">請求攝影機權限失敗</p>
-                        <ul class="mt-2 text-sm text-slate-600 list-disc list-inside text-left max-w-xs mx-auto">
-                           <li>請確認網址是以 <b>https://</b> 開頭。</li>
-                           <li>您可能已封鎖攝影機權限。請點擊網址列旁的攝影機圖示，並選擇「允許」。</li>
-                           <li>請檢查是否有瀏覽器擴充功能阻擋了攝影機存取。</li>
-                        </ul>
-                        <button id="retry-camera-btn" class="mt-4 bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700">
-                            設定完成後，點此重試
-                        </button>
+        function initializeAppLogic() {
+            const loginView = document.getElementById('login-view');
+            if (firebaseConfig.apiKey === "YOUR_API_KEY" || !firebaseConfig.apiKey) {
+                loginView.innerHTML = `
+                    <div class="p-8 text-center bg-red-50 rounded-lg">
+                        <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
+                        <h1 class="text-2xl font-bold text-red-700">下一步：請設定 Firebase</h1>
+                        <p class="mt-2 text-gray-800">
+                            您的報到系統尚未與後端資料庫連接。請依照先前提供的教學文件，完成 Firebase 設定，然後將專案的 
+                            <code>firebaseConfig</code> 
+                            設定碼貼入此 HTML 檔案中取代預留位置。
+                        </p>
                     </div>`;
-                document.getElementById('retry-camera-btn').addEventListener('click', initializeScanner);
-            });
-        }
+                return;
+            }
 
-        document.addEventListener('DOMContentLoaded', (event) => {
-            initializeScanner();
-        });
+            // --- Login UI Enhancements ---
+            const passwordInput = document.getElementById('password');
+            const togglePasswordBtn = document.getElementById('toggle-password-visibility');
+            const passwordToggleIcon = document.getElementById('password-toggle-icon');
+
+            togglePasswordBtn.addEventListener('click', () => {
+                const isPassword = passwordInput.type === 'password';
+                passwordInput.type = isPassword ? 'text' : 'password';
+                passwordToggleIcon.classList.toggle('fa-eye', !isPassword);
+                passwordToggleIcon.classList.toggle('fa-eye-slash', isPassword);
+            });
+
+            // Load saved account from localStorage
+            const savedAccount = localStorage.getItem('qr-checkin-account');
+            if (savedAccount) {
+                document.getElementById('account').value = savedAccount;
+                document.getElementById('remember-me').checked = true;
+            }
+
+            // --- DOM Elements ---
+            const mainView = document.getElementById('main-view');
+            const communitySelectionView = document.getElementById('community-selection-view');
+            const authError = document.getElementById('auth-error');
+
+            // --- State ---
+            let currentUser = null;
+            let selectedCommunityId = null;
+            let selectedCommunityName = null;
+            let currentEventConfig = {};
+            let currentResidents = []; // Store current residents for export
+            let currentStatusFilter = 'checkedIn'; // 'checkedIn' or 'notCheckedIn'
+            let communityUnsubscribe = null;
+            let configUnsubscribe = null;
+            let residentsUnsubscribe = null;
+            let sessionUnsubscribe = null; // Listener for session management
+            let html5QrCode = null;
+            let isProcessingScan = false;
+
+            // --- App Flow & Navigation ---
+            function showView(viewId) {
+                ['login-view', 'community-selection-view', 'main-view'].forEach(id => {
+                    document.getElementById(id).classList.add('hidden');
+                });
+                document.getElementById(viewId).classList.remove('hidden');
+            }
+
+            function enterCommunity(communityId, communityName) {
+                selectedCommunityId = communityId;
+                selectedCommunityName = communityName;
+                showView('main-view');
+                document.getElementById('community-name-display').value = communityName;
+                setupCommunityListeners();
+                 // Reset tabs to default
+                document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+                document.querySelector('button[data-tab="setup"]').classList.add('active');
+                document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
+                document.getElementById('setup-tab').classList.remove('hidden');
+                
+                // Reset status filter to default
+                currentStatusFilter = 'checkedIn';
+                const statusTabs = document.getElementById('status-filter-tabs').querySelectorAll('button');
+                statusTabs.forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.filter === 'checkedIn');
+                    btn.classList.toggle('border-transparent', btn.dataset.filter !== 'checkedIn');
+                    btn.classList.toggle('text-gray-500', btn.dataset.filter !== 'checkedIn');
+                });
+            }
+
+            function returnToCommunitySelection() {
+                cleanupCommunityListeners();
+                selectedCommunityId = null;
+                selectedCommunityName = null;
+                stopScanner();
+                showView('community-selection-view');
+                // Re-establish the listener for the community list to ensure it's fresh.
+                setupCommunityListListener();
+            }
+
+            document.getElementById('back-to-communities-btn').addEventListener('click', returnToCommunitySelection);
+
+            // --- Authentication & Session Management ---
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUser = user;
+                    
+                    const userStatusRef = doc(db, 'users', user.uid);
+                    const localSessionId = crypto.randomUUID();
+                    setDoc(userStatusRef, { sessionId: localSessionId, lastLogin: serverTimestamp() }, { merge: true });
+
+                    if (sessionUnsubscribe) sessionUnsubscribe();
+                    sessionUnsubscribe = onSnapshot(userStatusRef, (statusDoc) => {
+                        if (statusDoc.exists()) {
+                            const remoteSessionId = statusDoc.data().sessionId;
+                            if (remoteSessionId && remoteSessionId !== localSessionId) {
+                                signOut(auth).then(() => {
+                                    showInfoModal('連線中斷', '此帳號已在其他裝置登入，您已被自動登出。');
+                                });
+                            }
+                        }
+                    });
+                    
+                    showView('community-selection-view');
+                    setupCommunityListListener();
+                } else {
+                    currentUser = null;
+                    cleanupCommunityListeners();
+                    cleanupCommunityListListener();
+                    if (sessionUnsubscribe) {
+                        sessionUnsubscribe();
+                        sessionUnsubscribe = null;
+                    }
+                    showView('login-view');
+                }
+            });
+            
+            async function handleLogout() {
+                if (currentUser) {
+                    const userStatusRef = doc(db, 'users', currentUser.uid);
+                    await setDoc(userStatusRef, { sessionId: null }, { merge: true });
+                }
+                await signOut(auth);
+            }
+
+            [...document.querySelectorAll('#logout-btn, #logout-btn-main')].forEach(btn => {
+                btn.addEventListener('click', handleLogout);
+            });
+
+            document.getElementById('login-btn').addEventListener('click', () => {
+                authError.classList.add('hidden');
+                const account = document.getElementById('account').value.trim();
+                const password = document.getElementById('password').value;
+                const rememberMe = document.getElementById('remember-me').checked;
+
+                if (!account || !password) {
+                    handleAuthError({ code: 'auth/invalid-input' }, authError);
+                    return;
+                }
+
+                if (rememberMe) {
+                    localStorage.setItem('qr-checkin-account', account);
+                } else {
+                    localStorage.removeItem('qr-checkin-account');
+                }
+
+                const email = `${account}@checkin.system`; // Append dummy domain
+                signInWithEmailAndPassword(auth, email, password).catch(err => handleAuthError(err, authError));
+            });
+            
+            function handleAuthError(error, errorElement) {
+                console.error("Authentication Error:", error);
+                errorElement.classList.remove('hidden');
+                const errorMap = {
+                    'auth/invalid-input': '帳號和密碼欄位不可空白。',
+                    'auth/invalid-email': '帳號或密碼錯誤。', // Remapped for username context
+                    'auth/user-not-found': '帳號或密碼錯誤。',
+                    'auth/wrong-password': '帳號或密碼錯誤。',
+                    'auth/email-already-in-use': '此帳號名稱已被使用。',
+                    'auth/weak-password': '密碼強度不足，至少需要6個字元。',
+                    'auth/operation-not-allowed': '登入方式未啟用。請聯絡系統管理員。'
+                };
+                errorElement.textContent = errorMap[error.code] || '發生未知錯誤，請稍後再試。';
+            }
+
+            // --- User Creation (in Admin Panel) ---
+            document.getElementById('create-user-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const form = e.target;
+                const accountInput = document.getElementById('new-account-name');
+                const passwordInput = document.getElementById('new-account-password');
+                const button = form.querySelector('button[type="submit"]');
+                const feedbackEl = document.getElementById('create-user-feedback');
+                
+                const account = accountInput.value.trim();
+                const password = passwordInput.value;
+
+                feedbackEl.textContent = '';
+                feedbackEl.classList.remove('text-red-500', 'text-green-600');
+                
+                if (!account || !password) {
+                    feedbackEl.textContent = '新帳號和新密碼欄位不可空白。';
+                    feedbackEl.classList.add('text-red-500');
+                    return;
+                }
+                
+                // Simple validation for alphanumeric username
+                if (!/^[a-zA-Z0-9]+$/.test(account)) {
+                     feedbackEl.textContent = '帳號僅能包含英文字母和數字。';
+                    feedbackEl.classList.add('text-red-500');
+                    return;
+                }
+
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>建立中...';
+                
+                const newUserEmail = `${account}@checkin.system`;
+
+                try {
+                    await createUserWithEmailAndPassword(secondaryAuth, newUserEmail, password);
+                    feedbackEl.textContent = `帳號 "${account}" 已成功建立！`;
+                    feedbackEl.classList.add('text-green-600');
+                    form.reset();
+                } catch (error) {
+                    // Use a temporary div to display creation error
+                    const creationErrorDiv = document.createElement('div');
+                    handleAuthError(error, creationErrorDiv);
+                    feedbackEl.textContent = creationErrorDiv.textContent;
+                    feedbackEl.classList.add('text-red-500');
+                } finally {
+                    button.disabled = false;
+                    button.textContent = '建立帳號';
+                }
+            });
+
+            // --- Community Management ---
+            document.getElementById('community-list').addEventListener('click', async (e) => {
+                const deleteBtn = e.target.closest('.delete-community-btn');
+                const card = e.target.closest('.community-card');
+
+                if (deleteBtn) {
+                    e.stopPropagation(); // Prevent card click event from firing
+                    const communityId = deleteBtn.dataset.id;
+                    const communityName = deleteBtn.dataset.name;
+                    const confirmed = await showConfirmModal(
+                        '刪除社區',
+                        `您確定要刪除「${communityName}」嗎？此動作將會移除所有相關的住戶和活動資料，且無法復原。`,
+                        '確定刪除'
+                    );
+                    if (confirmed) {
+                        await deleteCommunity(communityId);
+                    }
+                } else if (card) {
+                    enterCommunity(card.dataset.id, card.dataset.name);
+                }
+            });
+
+            async function deleteCommunity(communityId) {
+                if (!currentUser) return;
+                showInfoModal('刪除中...', '正在刪除社區所有資料，請稍候。');
+
+                try {
+                    const batch = writeBatch(db);
+
+                    // Delete residents subcollection
+                    const residentsRef = collection(db, 'communities', communityId, 'residents');
+                    const residentsSnap = await getDocs(residentsRef);
+                    residentsSnap.forEach(doc => batch.delete(doc.ref));
+
+                    // Delete eventConfig subcollection
+                    const configRef = collection(db, 'communities', communityId, 'eventConfig');
+                    const configSnap = await getDocs(configRef);
+                    configSnap.forEach(doc => batch.delete(doc.ref));
+                    
+                    // Delete the main community document
+                    const communityDocRef = doc(db, 'communities', communityId);
+                    batch.delete(communityDocRef);
+
+                    // Delete the user's membership to this community
+                    const membershipRef = doc(db, 'users', currentUser.uid, 'communityMemberships', communityId);
+                    batch.delete(membershipRef);
+
+                    await batch.commit();
+                    
+                    // Manually remove the card from the UI for immediate feedback
+                    const cardToRemove = document.querySelector(`.community-card[data-id="${communityId}"]`);
+                    if (cardToRemove) {
+                        cardToRemove.remove();
+                    }
+
+                    document.getElementById('info-modal-ok-btn').click(); // Close the "deleting" modal
+                } catch (error) {
+                    console.error("Error deleting community:", error);
+                    document.getElementById('info-modal-ok-btn').click();
+                    showInfoModal('刪除失敗', '刪除社區時發生錯誤，請稍後再試。');
+                }
+            }
+
+
+            function setupCommunityListListener() {
+                if (!currentUser) return;
+                const membershipsRef = collection(db, 'users', currentUser.uid, 'communityMemberships');
+                if (communityUnsubscribe) communityUnsubscribe();
+                communityUnsubscribe = onSnapshot(membershipsRef, async (snapshot) => {
+                    const loadingEl = document.getElementById('loading-communities');
+                    const listEl = document.getElementById('community-list');
+
+                    if (!loadingEl || !listEl) return;
+
+                    loadingEl.style.display = 'block';
+
+                    if (snapshot.empty) {
+                        listEl.innerHTML = '<p class="text-center text-gray-500 col-span-full">您尚未加入任何社區。請建立一個新社區開始使用。</p>';
+                        loadingEl.style.display = 'none';
+                        return;
+                    }
+
+                    const communityPromises = snapshot.docs.map(async (membershipDoc) => {
+                        const communityDoc = await getDoc(doc(db, 'communities', membershipDoc.id));
+                        if (!communityDoc.exists()) return null;
+
+                        const configDoc = await getDoc(doc(db, 'communities', membershipDoc.id, 'eventConfig', 'current'));
+                        const eventName = configDoc.exists() && configDoc.data().eventName ? configDoc.data().eventName : '尚未設定活動';
+                        
+                        return { id: communityDoc.id, ...communityDoc.data(), eventName };
+                    });
+
+                    const communitiesWithEvents = (await Promise.all(communityPromises)).filter(c => c !== null);
+
+                    listEl.innerHTML = '';
+                    communitiesWithEvents.forEach(community => {
+                        const cardWrapper = document.createElement('div');
+                        cardWrapper.className = 'community-card p-6 rounded-lg shadow border border-gray-200 hover:shadow-md hover:border-blue-500 cursor-pointer transition-all relative';
+                        cardWrapper.dataset.id = community.id;
+                        cardWrapper.dataset.name = community.name;
+                        const createdAtDate = community.createdAt ? new Date(community.createdAt.seconds * 1000).toLocaleDateString('zh-TW') : '未知日期';
+
+                        cardWrapper.innerHTML = `
+                            <button data-id="${community.id}" data-name="${community.name}" class="delete-community-btn absolute top-2 right-2 text-gray-400 hover:text-red-600 focus:outline-none p-1 z-10">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                            <div class="flex items-center">
+                                <i class="fas fa-building text-blue-500 text-2xl mr-4"></i>
+                                <div>
+                                    <h3 class="text-xl font-bold text-gray-800 pointer-events-none">${community.name}</h3>
+                                    <p class="text-sm text-gray-500 pointer-events-none">${community.eventName}</p>
+                                     <p class="text-xs text-gray-400 pointer-events-none mt-1">由 ${community.ownerAccountName || '未知'} 於 ${createdAtDate} 建立</p>
+                                </div>
+                            </div>
+                        `;
+                        listEl.appendChild(cardWrapper);
+                    });
+                    loadingEl.style.display = 'none';
+                });
+            }
+            
+            function cleanupCommunityListListener() {
+                if (communityUnsubscribe) {
+                    communityUnsubscribe();
+                    communityUnsubscribe = null;
+                }
+            }
+
+            document.getElementById('create-community-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const form = e.target;
+                const input = form.querySelector('#new-community-name');
+                const button = form.querySelector('button[type="submit"]');
+                const communityName = input.value.trim();
+                const errorEl = document.getElementById('create-community-error');
+                errorEl.textContent = '';
+
+                if (!communityName) {
+                    errorEl.textContent = '社區名稱不可空白。';
+                    return;
+                }
+
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>建立中...';
+
+                try {
+                    const batch = writeBatch(db);
+                    const newCommunityRef = doc(collection(db, 'communities'));
+                    const accountName = auth.currentUser.email.split('@')[0];
+                    
+                    batch.set(newCommunityRef, {
+                        name: communityName,
+                        ownerId: currentUser.uid,
+                        ownerAccountName: accountName,
+                        createdAt: serverTimestamp()
+                    });
+
+                    const membershipRef = doc(db, 'users', currentUser.uid, 'communityMemberships', newCommunityRef.id);
+                    batch.set(membershipRef, { joinedAt: serverTimestamp() });
+
+                    await batch.commit();
+                    enterCommunity(newCommunityRef.id, communityName);
+
+                } catch (error) {
+                    console.error("Error creating community: ", error);
+                    errorEl.textContent = '建立社區時發生錯誤，請稍後再試。';
+                } finally {
+                    button.disabled = false;
+                    button.innerHTML = '建立';
+                    input.value = '';
+                }
+            });
+
+
+            // --- Community-Specific Data Listeners & Handlers ---
+            function setupCommunityListeners() {
+                if (!selectedCommunityId) return;
+                const configRef = doc(db, 'communities', selectedCommunityId, 'eventConfig', 'current');
+                const residentsColRef = collection(db, 'communities', selectedCommunityId, 'residents');
+
+                if (configUnsubscribe) configUnsubscribe();
+                configUnsubscribe = onSnapshot(configRef, (docSnap) => {
+                    currentEventConfig = docSnap.exists() ? docSnap.data() : {};
+                    updateConfigUI(currentEventConfig);
+                    updateStatusUI(currentResidents); // Recalculate status when config changes
+                });
+
+                if (residentsUnsubscribe) residentsUnsubscribe();
+                residentsUnsubscribe = onSnapshot(query(residentsColRef), (snapshot) => {
+                    const residents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    currentResidents = residents; // Update the state for export
+                    updateResidentsUI(residents);
+                    updateStatusUI(residents);
+                });
+            }
+
+            function cleanupCommunityListeners() {
+                if (configUnsubscribe) { configUnsubscribe(); configUnsubscribe = null; }
+                if (residentsUnsubscribe) { residentsUnsubscribe(); residentsUnsubscribe = null; }
+            }
+
+            document.getElementById('save-config-btn').addEventListener('click', async () => {
+                const configRef = doc(db, 'communities', selectedCommunityId, 'eventConfig', 'current');
+                const configData = {
+                    eventName: document.getElementById('event-name').value,
+                    eventDate: document.getElementById('event-date').value,
+                    ratioThreshold: document.getElementById('event-ratio-threshold').value
+                };
+                await setDoc(configRef, configData);
+                const feedback = document.getElementById('config-feedback');
+                feedback.textContent = '設定已成功儲存！';
+                setTimeout(() => feedback.textContent = '', 3000);
+            });
+
+            document.getElementById('add-resident-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const feedbackEl = document.getElementById('add-resident-feedback');
+                feedbackEl.textContent = '';
+                feedbackEl.classList.remove('text-red-500', 'text-green-600');
+                
+                const qrCodeInput = document.getElementById('resident-qrcode');
+                const householdInput = document.getElementById('resident-household');
+                const nameInput = document.getElementById('resident-name');
+                const addressInput = document.getElementById('resident-address');
+                const areaInput = document.getElementById('resident-area');
+                const ratioInput = document.getElementById('resident-ratio');
+
+                const qrCodeId = qrCodeInput.value.trim();
+                const newResidentData = {
+                    householdId: householdInput.value.trim(),
+                    name: nameInput.value.trim(),
+                    address: addressInput.value.trim(),
+                    area: areaInput.value.trim(),
+                    ratio: ratioInput.value.trim(),
+                    isCheckedIn: false,
+                    checkInTime: null,
+                };
+
+                if (!qrCodeId || !newResidentData.householdId || !newResidentData.name) {
+                    feedbackEl.textContent = 'QR Code, 戶號, 和姓名為必填欄位。';
+                    feedbackEl.classList.add('text-red-500');
+                    return;
+                }
+
+                const residentRef = doc(db, 'communities', selectedCommunityId, 'residents', qrCodeId);
+                const docSnap = await getDoc(residentRef);
+
+                if (docSnap.exists()) {
+                    feedbackEl.textContent = `錯誤：QR Code 生成碼 "${qrCodeId}" 已被使用。`;
+                    feedbackEl.classList.add('text-red-500');
+                    return;
+                }
+                
+                await setDoc(residentRef, newResidentData);
+                feedbackEl.textContent = '住戶新增成功！';
+                feedbackEl.classList.add('text-green-600');
+                
+                e.target.reset(); // Clear form
+                qrCodeInput.focus();
+
+                setTimeout(() => { feedbackEl.textContent = ''; }, 3000);
+            });
+
+            document.getElementById('resident-list').addEventListener('click', async (e) => {
+                const deleteBtn = e.target.closest('.delete-resident-btn');
+                const toggleBtn = e.target.closest('.toggle-checkin-btn');
+
+                if (deleteBtn) {
+                    const residentId = deleteBtn.dataset.id;
+                    const residentRef = doc(db, 'communities', selectedCommunityId, 'residents', residentId);
+                    const confirmed = await showConfirmModal('刪除住戶', `您確定要刪除 QR Code 為 "${residentId}" 的住戶嗎？`, '確定刪除');
+                    if (confirmed) {
+                        await deleteDoc(residentRef);
+                    }
+                } else if (toggleBtn) {
+                    const residentId = toggleBtn.dataset.id;
+                    const currentStatus = toggleBtn.dataset.status === 'true';
+                    const residentRef = doc(db, 'communities', selectedCommunityId, 'residents', residentId);
+                    
+                    const actionText = currentStatus ? '取消報到' : '設為報到';
+                    const confirmed = await showConfirmModal('手動更改狀態', `您確定要將此住戶狀態更改為「${actionText}」嗎？`, '確定');
+                    
+                    if (confirmed) {
+                        const newStatus = !currentStatus;
+                        const updateData = {
+                            isCheckedIn: newStatus,
+                            checkInTime: newStatus ? serverTimestamp() : null
+                        };
+                        await updateDoc(residentRef, updateData);
+                    }
+                }
+            });
+            document.getElementById('delete-all-residents-btn').addEventListener('click', async () => {
+                if (!selectedCommunityId) return;
+
+                const confirmed = await showConfirmModal(
+                    '全部刪除確認',
+                    `您確定要刪除「${selectedCommunityName}」的所有住戶資料嗎？此動作無法復原！`,
+                    '確定全部刪除'
+                );
+
+                if (confirmed) {
+                    await deleteAllResidents();
+                }
+            });
+
+            async function deleteAllResidents() {
+                showInfoModal('刪除中...', '正在刪除所有住戶資料，請稍候...');
+                try {
+                    const residentsColRef = collection(db, 'communities', selectedCommunityId, 'residents');
+                    const snapshot = await getDocs(residentsColRef);
+                    
+                    if (snapshot.empty) {
+                        document.getElementById('info-modal-ok-btn').click();
+                        showInfoModal('完成', '沒有住戶資料可供刪除。');
+                        return;
+                    }
+
+                    const chunks = [];
+                    for (let i = 0; i < snapshot.docs.length; i += 500) {
+                        chunks.push(snapshot.docs.slice(i, i + 500));
+                    }
+
+                    for (const chunk of chunks) {
+                        const batch = writeBatch(db);
+                        chunk.forEach(doc => batch.delete(doc.ref));
+                        await batch.commit();
+                    }
+                    
+                    document.getElementById('info-modal-ok-btn').click();
+                    showInfoModal('成功', '所有住戶資料已成功刪除。');
+                } catch (error) {
+                    console.error("Error deleting all residents:", error);
+                    document.getElementById('info-modal-ok-btn').click();
+                    showInfoModal('錯誤', '刪除過程中發生錯誤，請稍後再試。');
+                }
+            }
+
+
+            // --- CSV Import/Export ---
+            document.getElementById('export-csv-btn').addEventListener('click', () => {
+                const headers = ['QR Code', '戶號', '姓名', '地址', '坪數', '區分權比例'];
+                
+                const escapeCsvField = (field) => {
+                    const str = String(field || '');
+                    // Escape quotes and wrap in quotes if it contains a comma, quote, or newline
+                    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                        return `"${str.replace(/"/g, '""')}"`;
+                    }
+                    return str;
+                };
+
+                const rows = currentResidents.map(res => 
+                    [
+                        escapeCsvField(res.id),
+                        escapeCsvField(res.householdId),
+                        escapeCsvField(res.name),
+                        escapeCsvField(res.address),
+                        escapeCsvField(res.area),
+                        escapeCsvField(res.ratio)
+                    ].join(',')
+                );
+
+                let csvContent = headers.join(',') + '\r\n' + rows.join('\r\n');
+
+                const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", `${selectedCommunityName}_住戶列表.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+
+            const csvImportInput = document.getElementById('csv-import-input');
+            document.getElementById('import-csv-btn').addEventListener('click', () => csvImportInput.click());
+            csvImportInput.addEventListener('change', async (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const confirmed = await showConfirmModal('匯入CSV', '這將會以CSV中的QR Code碼覆蓋現有資料，確定要繼續嗎？', '確定匯入');
+                if (!confirmed) {
+                    csvImportInput.value = ''; // Reset file input
+                    return;
+                }
+
+                showInfoModal('匯入中...', '正在處理CSV檔案，請稍候...');
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const text = e.target.result;
+                    processCsvText(text);
+                };
+                reader.onerror = () => {
+                    showInfoModal('匯入失敗', '讀取檔案時發生錯誤。');
+                };
+                reader.readAsText(file, 'UTF-8');
+            });
+
+            async function processCsvText(csvText) {
+                Papa.parse(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: async (results) => {
+                        const { data, errors, meta } = results;
+
+                        if (errors.length > 0) {
+                             console.error("CSV Parsing errors:", errors);
+                             showInfoModal('匯入失敗', `CSV檔案格式有誤，請檢查第 ${errors[0].row} 行。\n\n錯誤訊息: ${errors[0].message}`);
+                             csvImportInput.value = '';
+                             return;
+                        }
+
+                        const foundHeaders = meta.fields.map(h => h.trim());
+                        const requiredHeaders = ['QR Code', '戶號', '姓名'];
+                        
+                        const missingHeaders = requiredHeaders.filter(h => !foundHeaders.includes(h));
+                        
+                        if (missingHeaders.length > 0) {
+                            let friendlyMessage = `系統找不到必要的標題欄位： [${missingHeaders.join(', ')}]
+
+這通常是檔案編碼錯誤，導致中文字變成亂碼。
+
+請依照以下步驟解決：
+1. 使用 Excel 開啟您的 CSV 檔。
+2. 選擇「檔案」 > 「另存新檔」。
+3. 在「存檔類型」選擇「CSV UTF-8 (逗號分隔) (*.csv)」。
+   (如果沒有此選項，請見下方備註)
+4. 儲存檔案後，再重新匯入。
+
+備註：若您的 Excel 版本較舊，沒有「CSV UTF-8」選項，請在「另存新檔」視窗中，點擊下方的「工具」按鈕，選擇「Web 選項」，然後在「編碼」分頁中選擇「Unicode (UTF-8)」。
+
+---
+偵測到的標題為：
+[${foundHeaders.join(', ')}]`;
+                            showInfoModal('匯入失敗：請檢查 CSV 標題與編碼', friendlyMessage);
+                            csvImportInput.value = '';
+                            return;
+                        }
+
+                        const residentsToUpload = data.map(row => {
+                            const id = row['QR Code']?.trim();
+                            if (!id) return null;
+                            return {
+                                id: id,
+                                data: {
+                                    householdId: row['戶號']?.trim() || '',
+                                    name: row['姓名']?.trim() || '',
+                                    address: row['地址']?.trim() || '',
+                                    area: row['坪數']?.trim() || '',
+                                    ratio: row['區分權比例']?.trim() || ''
+                                }
+                            };
+                        }).filter(Boolean); // Filter out rows without a QR Code ID
+
+                        if (residentsToUpload.length === 0) {
+                            showInfoModal('匯入失敗', 'CSV檔案中沒有可匯入的有效資料。請檢查QR Code欄位是否都有填寫。');
+                            csvImportInput.value = '';
+                            return;
+                        }
+                        
+                        try {
+                            // Firestore limits writes in a single batch to 500. We need to chunk the uploads.
+                            const chunks = [];
+                            for (let i = 0; i < residentsToUpload.length; i += 500) {
+                                chunks.push(residentsToUpload.slice(i, i + 500));
+                            }
+
+                            for (const chunk of chunks) {
+                                const batch = writeBatch(db);
+                                chunk.forEach(res => {
+                                    const residentRef = doc(db, 'communities', selectedCommunityId, 'residents', res.id);
+                                    const finalData = {
+                                        isCheckedIn: false,
+                                        checkInTime: null,
+                                        ...res.data
+                                    };
+                                    batch.set(residentRef, finalData, { merge: true });
+                                });
+                                await batch.commit();
+                            }
+                            
+                            showInfoModal('匯入成功', `成功匯入或更新了 ${residentsToUpload.length} 筆住戶資料。`);
+                        } catch (err) {
+                            console.error("CSV Import Error:", err);
+                            showInfoModal('匯入失敗', `處理過程中發生錯誤: ${err.message}`);
+                        } finally {
+                            csvImportInput.value = ''; // Reset for next import
+                        }
+                    },
+                    error: (err) => {
+                        console.error("Papa Parse Error:", err);
+                        showInfoModal('匯入失敗', `讀取CSV檔案時發生錯誤: ${err.message}`);
+                        csvImportInput.value = '';
+                    }
+                });
+            }
+
+
+            // --- UI Update Functions ---
+            function updateConfigUI(data) {
+                const eventNameEl = document.getElementById('event-name');
+                if (!eventNameEl) return; // Guard clause
+
+                eventNameEl.value = data.eventName || '';
+                document.getElementById('event-date').value = data.eventDate || '';
+                document.getElementById('event-ratio-threshold').value = data.ratioThreshold || '';
+                document.getElementById('header-community-name').textContent = selectedCommunityName;
+                document.getElementById('header-event-name').textContent = data.eventName || '尚未設定活動';
+            }
+
+            function updateResidentsUI(residents) {
+                const list = document.getElementById('resident-list');
+                if (!list) return; // Guard clause
+
+                list.innerHTML = ''; 
+                residents.sort((a,b) => a.householdId.localeCompare(b.householdId)).forEach(res => {
+                    const row = document.createElement('tr');
+                    const checkInButton = res.isCheckedIn 
+                        ? `<button data-id="${res.id}" data-status="true" class="toggle-checkin-btn text-xs py-1 px-2 rounded bg-yellow-500 text-white hover:bg-yellow-600">取消報到</button>`
+                        : `<button data-id="${res.id}" data-status="false" class="toggle-checkin-btn text-xs py-1 px-2 rounded bg-green-500 text-white hover:bg-green-600">報到</button>`;
+
+                    row.innerHTML = `
+                        <td class="py-3 px-4 font-mono text-xs">${res.id}</td>
+                        <td class="py-3 px-4">${res.householdId}</td>
+                        <td class="py-3 px-4">${res.name}</td>
+                        <td class="py-3 px-4">${res.address || '---'}</td>
+                        <td class="py-3 px-4">${res.area || '---'}</td>
+                        <td class="py-3 px-4">${res.ratio || '---'}</td>
+                        <td class="py-3 px-4">${checkInButton}</td>
+                        <td class="py-3 px-4">
+                            <button data-id="${res.id}" class="delete-resident-btn text-red-500 hover:text-red-700"><i class="fas fa-trash-alt"></i></button>
+                        </td>
+                    `;
+                    list.appendChild(row);
+                });
+                updateQrCodeModal(residents);
+            }
+            
+            const statusFilterTabs = document.getElementById('status-filter-tabs');
+            statusFilterTabs.addEventListener('click', (e) => {
+                const btn = e.target.closest('button.status-filter-button');
+                if (!btn) return;
+                
+                currentStatusFilter = btn.dataset.filter;
+
+                statusFilterTabs.querySelectorAll('button').forEach(b => {
+                    b.classList.remove('active', 'border-blue-500', 'text-blue-600');
+                    b.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+                });
+                btn.classList.add('active', 'border-blue-500', 'text-blue-600');
+                btn.classList.remove('border-transparent', 'text-gray-500');
+
+                updateStatusUI(currentResidents);
+            });
+
+            function updateStatusUI(residents) {
+                // Guard against calls when the view is not active
+                if (!document.getElementById('status-tab') || document.getElementById('status-tab').classList.contains('hidden')) {
+                    return;
+                }
+
+                const total = residents.length;
+                const checkedInList = residents.filter(r => r.isCheckedIn);
+                const checkedInCount = checkedInList.length;
+                const notCheckedInCount = total - checkedInCount;
+                const checkInPercentage = total > 0 ? Math.round((checkedInCount / total) * 100) : 0;
+
+                const safeParseFloat = (val) => {
+                    const num = parseFloat(val);
+                    return isNaN(num) ? 0 : num;
+                };
+                const totalRatio = residents.reduce((sum, r) => sum + safeParseFloat(r.ratio), 0);
+                const checkedInRatio = checkedInList.reduce((sum, r) => sum + safeParseFloat(r.ratio), 0);
+                const ratioPercentage = totalRatio > 0 ? Math.round((checkedInRatio / totalRatio) * 100) : 0;
+
+                document.getElementById('total-residents').textContent = total;
+                document.getElementById('checked-in-count').textContent = checkedInCount;
+                document.getElementById('not-checked-in-count').textContent = notCheckedInCount;
+                document.getElementById('ratio-check-in-percentage').textContent = `${ratioPercentage}%`;
+                document.getElementById('progress-bar').style.width = `${checkInPercentage}%`;
+                
+                // Update quorum met indicator
+                const threshold = safeParseFloat(currentEventConfig.ratioThreshold);
+                const quorumIndicator = document.getElementById('quorum-met-indicator');
+                if (threshold > 0 && ratioPercentage >= threshold) {
+                    quorumIndicator.classList.remove('hidden');
+                } else {
+                    quorumIndicator.classList.add('hidden');
+                }
+
+
+                const tableHead = document.getElementById('status-table-head');
+                const list = document.getElementById('status-list');
+                
+                if (currentStatusFilter === 'checkedIn') {
+                    tableHead.innerHTML = `
+                        <tr>
+                            <th class="text-left py-3 px-4 font-semibold text-sm">戶號</th>
+                            <th class="text-left py-3 px-4 font-semibold text-sm">報到狀態</th>
+                            <th class="text-left py-3 px-4 font-semibold text-sm">報到日期時間</th>
+                        </tr>`;
+                    list.innerHTML = '';
+                    checkedInList.sort((a,b) => a.householdId.localeCompare(b.householdId)).forEach(res => {
+                        const checkInTime = res.checkInTime ? new Date(res.checkInTime.seconds * 1000).toLocaleString('zh-TW', { hour12: false }) : '---';
+                        const row = document.createElement('tr');
+                        row.className = 'bg-green-50';
+                        row.innerHTML = `
+                            <td class="py-3 px-4">${res.householdId}</td>
+                            <td class="py-3 px-4"><span class="px-2 py-1 text-xs rounded-full bg-green-200 text-green-800">已報到</span></td>
+                            <td class="py-3 px-4">${checkInTime}</td>
+                        `;
+                        list.appendChild(row);
+                    });
+                } else { // notCheckedIn
+                     tableHead.innerHTML = `
+                        <tr>
+                            <th class="text-left py-3 px-4 font-semibold text-sm">戶號</th>
+                            <th class="text-left py-3 px-4 font-semibold text-sm">報到狀態</th>
+                        </tr>`;
+                    list.innerHTML = '';
+                    residents.filter(r => !r.isCheckedIn).sort((a,b) => a.householdId.localeCompare(b.householdId)).forEach(res => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td class="py-3 px-4">${res.householdId}</td>
+                            <td class="py-3 px-4"><span class="px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-800">未報到</span></td>
+                        `;
+                        list.appendChild(row);
+                    });
+                }
+            }
+            
+            function updateQrCodeModal(residents) {
+                const qrList = document.getElementById('qrcode-list');
+                 if (!qrList) return; // Guard clause
+
+                qrList.innerHTML = '';
+                residents.sort((a,b) => a.householdId.localeCompare(b.householdId)).forEach(res => {
+                    const item = document.createElement('div');
+                    item.className = 'qr-code-item border p-4 rounded-lg text-center flex flex-col items-center justify-center';
+                    const qrContainer = document.createElement('div');
+                    qrContainer.id = `qr-${res.id}`;
+                    qrContainer.className = 'mb-2';
+                    item.appendChild(qrContainer);
+                    const info = document.createElement('p');
+                    info.className = 'font-semibold';
+                    info.textContent = `${res.householdId} ${res.name}`;
+                    item.appendChild(info);
+                    qrList.appendChild(item);
+                    new QRCode(qrContainer, { text: res.id, width: 128, height: 128 });
+                });
+            }
+
+            // --- Tabs, Scanner, Modals ---
+            const tabs = document.getElementById('tabs');
+            tabs.addEventListener('click', (e) => {
+                const btn = e.target.closest('button');
+                if (btn) {
+                    const tabId = btn.dataset.tab;
+                    tabs.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    document.querySelectorAll('.tab-pane').forEach(pane => {
+                        pane.classList.toggle('hidden', pane.id !== `${tabId}-tab`);
+                    });
+                    if (tabId === 'scanner') startScanner();
+                    else stopScanner();
+                }
+            });
+
+            async function startScanner() {
+                if (html5QrCode && html5QrCode.isScanning) return;
+                html5QrCode = new Html5Qrcode("reader");
+                const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+                const scannerErrorEl = document.getElementById('scanner-error');
+                scannerErrorEl.textContent = '正在請求攝影機權限...';
+
+                try {
+                    const cameras = await Html5Qrcode.getCameras();
+                    if (!cameras || cameras.length === 0) {
+                        scannerErrorEl.textContent = '找不到攝影機設備。';
+                        return;
+                    }
+
+                    let cameraId;
+                    // Prefer back camera if available (for mobile)
+                    const backCamera = cameras.find(camera => camera.label.toLowerCase().includes('back') || camera.label.toLowerCase().includes('後置'));
+                    if (backCamera) {
+                        cameraId = backCamera.id;
+                    } else {
+                        // Otherwise, use the first available camera (for desktops/laptops)
+                        cameraId = cameras[0].id;
+                    }
+
+                    scannerErrorEl.textContent = '正在啟動攝影機...';
+                    document.getElementById('stop-scanner-btn').classList.remove('hidden');
+
+                    await html5QrCode.start(
+                        cameraId,      // Use the specific camera ID
+                        config,
+                        onScanSuccess, // success callback
+                        (errorMessage) => {
+                            // parse error, ignore.
+                        }
+                    );
+                    scannerErrorEl.textContent = ''; // Clear status message on success
+
+                } catch (err) {
+                    if (err.name === 'NotAllowedError') {
+                         scannerErrorEl.textContent = '攝影機權限被拒絕。請至瀏覽器設定中允許本網站使用攝影機。';
+                    } else {
+                         scannerErrorEl.textContent = `無法啟動攝影機: ${err}`;
+                    }
+                    console.error("Camera initialization error:", err);
+                }
+            }
+
+
+            function stopScanner() {
+                if (html5QrCode && html5QrCode.isScanning) {
+                    html5QrCode.stop().catch(err => console.error("Scanner stop failed", err));
+                }
+                document.getElementById('stop-scanner-btn').classList.add('hidden');
+            }
+            document.getElementById('stop-scanner-btn').addEventListener('click', stopScanner);
+
+            async function onScanSuccess(decodedText, decodedResult) {
+                if (isProcessingScan) return; // Ignore if a scan is already being processed
+
+                isProcessingScan = true;
+
+                try {
+                    const residentRef = doc(db, 'communities', selectedCommunityId, 'residents', decodedText);
+                    const residentSnap = await getDoc(residentRef);
+
+                    if (residentSnap.exists()) {
+                        const residentData = residentSnap.data();
+                        if (residentData.isCheckedIn) {
+                            speak('重複報到');
+                            showFeedback('重複報到', `${residentData.householdId} ${residentData.name} 已報到過。`, 'orange');
+                            addScanLog(`${residentData.householdId} ${residentData.name}`, '重複報到', 'orange');
+                        } else {
+                            await updateDoc(residentRef, { isCheckedIn: true, checkInTime: serverTimestamp() });
+                            speak('報到成功');
+                            showFeedback('報到成功', `${residentData.householdId} ${residentData.name}`, 'green');
+                            addScanLog(`${residentData.householdId} ${residentData.name}`, '報到成功', 'green');
+                        }
+                    } else {
+                        speak('無效的 QR Code');
+                        showFeedback('無效的 QR Code', '找不到對應的住戶資料。', 'red');
+                        addScanLog(`無效的 Code: ${decodedText.substring(0, 8)}...`, '查無資料', 'red');
+                    }
+                } catch (error) {
+                    console.error("Error processing scan:", error);
+                } finally {
+                     // Add a short cooldown before allowing the next scan
+                    setTimeout(() => {
+                        isProcessingScan = false;
+                    }, 1000);
+                }
+            }
+
+            // Feedback and Log UI
+            function showFeedback(title, message, color) {
+                const overlay = document.getElementById('feedback-overlay');
+                const colors = { green: 'bg-green-500', orange: 'bg-orange-500', red: 'bg-red-500' };
+                const icons = { green: 'fa-check-circle', orange: 'fa-exclamation-triangle', red: 'fa-times-circle' };
+                const feedbackDiv = document.createElement('div');
+                feedbackDiv.className = `feedback-animation text-white p-6 rounded-lg shadow-2xl text-center ${colors[color]}`;
+                feedbackDiv.innerHTML = `<i class="fas ${icons[color]} text-5xl mb-3"></i><h3 class="text-2xl font-bold">${title}</h3><p class="text-lg">${message}</p>`;
+                overlay.innerHTML = '';
+                overlay.appendChild(feedbackDiv);
+                setTimeout(() => { if (overlay.contains(feedbackDiv)) overlay.removeChild(feedbackDiv); }, 2800);
+            }
+            function addScanLog(text, status, color) {
+                const logContainer = document.getElementById('scan-log');
+                const time = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+                const colors = { green: 'border-green-500', orange: 'border-orange-500', red: 'border-red-500' };
+                const logEntry = document.createElement('div');
+                logEntry.className = `p-2 border-l-4 ${colors[color]} bg-white rounded-r-lg shadow-sm`;
+                logEntry.innerHTML = `<div class="flex justify-between items-center"><span class="font-medium text-gray-800">${text}</span><span class="text-xs text-gray-500">${time}</span></div><p class="text-sm text-gray-600">${status}</p>`;
+                logContainer.prepend(logEntry);
+                if (logContainer.children.length > 50) logContainer.removeChild(logContainer.lastChild);
+            }
+
+            // Modal Logic
+            const qrModal = document.getElementById('qrcode-modal');
+            document.getElementById('view-qrcodes-btn').addEventListener('click', () => qrModal.classList.remove('hidden'));
+            document.getElementById('close-qrcode-modal-btn').addEventListener('click', () => qrModal.classList.add('hidden'));
+            document.getElementById('print-qrcodes-btn').addEventListener('click', () => window.print());
+
+            const shareModal = document.getElementById('share-modal');
+            document.getElementById('share-status-btn').addEventListener('click', () => {
+                const url = `${window.location.origin}${window.location.pathname}?public_status=${selectedCommunityId}`;
+                const shareUrlInput = document.getElementById('share-url');
+                shareUrlInput.value = url;
+                const qrCodeContainer = document.getElementById('share-qrcode');
+                qrCodeContainer.innerHTML = '';
+                new QRCode(qrCodeContainer, { text: url, width: 200, height: 200 });
+                shareModal.classList.remove('hidden');
+            });
+            document.getElementById('close-share-modal-btn').addEventListener('click', () => shareModal.classList.add('hidden'));
+            document.getElementById('copy-share-url-btn').addEventListener('click', () => {
+                const shareUrlInput = document.getElementById('share-url');
+                shareUrlInput.select();
+                document.execCommand('copy');
+                showInfoModal('成功', '連結已成功複製到剪貼簿！');
+            });
+
+
+            let confirmResolve = null;
+            const confirmModal = document.getElementById('confirm-modal');
+            function showConfirmModal(title, text, confirmText) {
+                return new Promise((resolve) => {
+                    document.getElementById('confirm-modal-title').textContent = title;
+                    document.getElementById('confirm-modal-text').textContent = text;
+                    document.getElementById('confirm-modal-ok-btn').textContent = confirmText;
+                    confirmModal.classList.remove('hidden');
+                    confirmResolve = resolve;
+                });
+            }
+            document.getElementById('confirm-modal-ok-btn').addEventListener('click', () => { confirmModal.classList.add('hidden'); if(confirmResolve) confirmResolve(true); });
+            document.getElementById('confirm-modal-cancel-btn').addEventListener('click', () => { confirmModal.classList.add('hidden'); if(confirmResolve) confirmResolve(false); });
+            
+            const infoModal = document.getElementById('info-modal');
+            function showInfoModal(title, text) {
+                const modalText = document.getElementById('info-modal-text');
+                document.getElementById('info-modal-title').textContent = title;
+                modalText.textContent = text;
+                modalText.style.whiteSpace = 'pre-wrap';
+                modalText.style.textAlign = 'left';
+                infoModal.classList.remove('hidden');
+            }
+            document.getElementById('info-modal-ok-btn').addEventListener('click', () => { infoModal.classList.add('hidden'); });
+        }
     </script>
 </body>
 </html>
