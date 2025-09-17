@@ -162,6 +162,7 @@
                 <h1 class="text-3xl font-bold text-gray-800">會議活動列表</h1>
                 <div class="flex items-center space-x-4 mt-4 sm:mt-0">
                     <button id="create-event-btn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-md hover:bg-red-700">新增會議活動</button>
+                    <button id="user-management-btn" class="bg-green-500 text-white font-bold py-2 px-4 rounded-md hover:bg-green-600">帳號管理</button>
                     <span id="user-display" class="text-sm text-gray-500"></span>
                     <button id="logout-btn-events" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 text-sm font-semibold">登出</button>
                 </div>
@@ -198,7 +199,6 @@
                     <button id="tab-residents" class="tab-button shrink-0 px-4 py-2 text-sm font-medium text-gray-500 rounded-t-lg border-b-2 border-transparent hover:text-gray-700 hover:border-gray-300">住戶管理</button>
                     <button id="tab-scanner" class="tab-button shrink-0 px-4 py-2 text-sm font-medium text-gray-500 rounded-t-lg border-b-2 border-transparent hover:text-gray-700 hover:border-gray-300">掃碼報到</button>
                     <button id="tab-settings" class="tab-button shrink-0 px-4 py-2 text-sm font-medium text-gray-500 rounded-t-lg border-b-2 border-transparent hover:text-gray-700 hover:border-gray-300">系統設定</button>
-                    <button id="tab-users" class="tab-button shrink-0 px-4 py-2 text-sm font-medium text-gray-500 rounded-t-lg border-b-2 border-transparent hover:text-gray-700 hover:border-gray-300">帳號管理</button>
                 </nav>
             </div>
 
@@ -370,53 +370,60 @@
                         </div>
                     </div>
                 </div>
-                 <!-- User Management -->
-                <div id="users-content" class="hidden">
-                    <div class="bg-white p-6 rounded-xl shadow-md">
-                        <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
-                            <h3 class="text-lg font-semibold">帳號管理</h3>
+            </div>
+        </div>
+        
+        <!-- User Management View -->
+        <div id="user-management-view" class="hidden">
+             <div class="flex items-center mb-4">
+                 <button id="back-to-events-from-users-btn" class="text-red-600 hover:text-red-800 font-semibold flex items-center">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                     返回活動列表
+                 </button>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+                    <h3 class="text-lg font-semibold">帳號管理</h3>
+                </div>
+                <!-- Add User Form -->
+                <form id="add-user-form" class="mb-6 p-4 border rounded-lg bg-gray-50">
+                    <h4 class="text-md font-semibold mb-2">新增帳號</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="new-username" class="block text-sm font-medium text-gray-700">帳號</label>
+                            <input type="text" id="new-username" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
                         </div>
-                        <!-- Add User Form -->
-                        <form id="add-user-form" class="mb-6 p-4 border rounded-lg bg-gray-50">
-                            <h4 class="text-md font-semibold mb-2">新增帳號</h4>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label for="new-username" class="block text-sm font-medium text-gray-700">帳號</label>
-                                    <input type="text" id="new-username" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
-                                </div>
-                                <div>
-                                    <label for="new-password" class="block text-sm font-medium text-gray-700">密碼</label>
-                                    <input type="password" id="new-password" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
-                                </div>
-                                <div>
-                                    <label for="new-user-role" class="block text-sm font-medium text-gray-700">角色</label>
-                                    <select id="new-user-role" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
-                                        <option value="staff">工作人員</option>
-                                        <option value="junior_manager">初階主管</option>
-                                        <option value="senior_manager">高階主管</option>
-                                        <option value="system_admin">系統管理者</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="mt-4">
-                                <button type="submit" class="w-full bg-red-600 text-white font-bold py-2 px-4 rounded-md hover:bg-red-700">建立帳號</button>
-                            </div>
-                        </form>
-
-                        <!-- Users List -->
-                        <div class="overflow-auto max-h-[60vh]">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50 sticky top-0">
-                                    <tr>
-                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">帳號</th>
-                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">角色</th>
-                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="users-list" class="bg-white divide-y divide-gray-200"></tbody>
-                            </table>
+                        <div>
+                            <label for="new-password" class="block text-sm font-medium text-gray-700">密碼</label>
+                            <input type="password" id="new-password" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
+                        </div>
+                        <div>
+                            <label for="new-user-role" class="block text-sm font-medium text-gray-700">角色</label>
+                            <select id="new-user-role" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
+                                <option value="staff">工作人員</option>
+                                <option value="junior_manager">初階主管</option>
+                                <option value="senior_manager">高階主管</option>
+                                <option value="system_admin">系統管理者</option>
+                            </select>
                         </div>
                     </div>
+                    <div class="mt-4">
+                        <button type="submit" class="w-full bg-red-600 text-white font-bold py-2 px-4 rounded-md hover:bg-red-700">建立帳號</button>
+                    </div>
+                </form>
+
+                <!-- Users List -->
+                <div class="overflow-auto max-h-[60vh]">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50 sticky top-0">
+                            <tr>
+                                <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">帳號</th>
+                                <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">角色</th>
+                                <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-list" class="bg-white divide-y divide-gray-200"></tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -527,14 +534,14 @@
 
         // --- Firebase Configuration ---
         const firebaseConfig = {
-    apiKey: "AIzaSyAPoAvqWOusJNrBXDsxpXqPNp92bm7IWPU",
-    authDomain: "nwcom-qrcodecheckin-02.firebaseapp.com",
-    projectId: "nwcom-qrcodecheckin-02",
-    storageBucket: "nwcom-qrcodecheckin-02.firebasestorage.app",
-    messagingSenderId: "602083293864",
-    appId: "1:602083293864:web:9689c7f371c3fb4ff8609d",
-    measurementId: "G-9KZ6SXDRNT"
-  };
+          apiKey: "AIzaSyAPoAvqWOusJNrBXDsxpXqPNp92bm7IWPU",
+          authDomain: "nwcom-qrcodecheckin-02.firebaseapp.com",
+          projectId: "nwcom-qrcodecheckin-02",
+          storageBucket: "nwcom-qrcodecheckin-02.appspot.com",
+          messagingSenderId: "602083293864",
+          appId: "1:602083293864:web:9689c7f371c3fb4ff8609d",
+          measurementId: "G-9KZ6SXDRNT"
+        };
         
         // --- App Initialization ---
         let app, auth, db;
@@ -584,6 +591,7 @@
             const loginView = document.getElementById('login-view');
             const eventSelectionView = document.getElementById('event-selection-view');
             const eventDetailsView = document.getElementById('event-details-view');
+            const userManagementView = document.getElementById('user-management-view');
             const appContainer = document.getElementById('app');
             const userDisplay = document.getElementById('user-display');
             const userDisplayDetails = document.getElementById('user-display-details');
@@ -601,6 +609,8 @@
             const shareLink = document.getElementById('share-link');
             const shareUrlDisplay = document.getElementById('share-url-display');
             const addUserForm = document.getElementById('add-user-form');
+            const userManagementBtn = document.getElementById('user-management-btn');
+            const backToEventsFromUsersBtn = document.getElementById('back-to-events-from-users-btn');
             
             appContainer.style.display = 'block';
 
@@ -679,12 +689,13 @@
                     if (userSnap.exists()) {
                         currentUser = { uid: user.uid, name: username, role: userSnap.data().role };
                     } else {
-                        // This case should ideally not happen for non-test users
-                        // as they should be created by an admin.
-                        // We create a default 'staff' user if one doesn't exist.
                         const role = username === 'test' ? 'system_admin' : 'staff'; 
                         await setDoc(userRef, { username: username, email: user.email, role: role });
                         currentUser = { uid: user.uid, name: username, role: role };
+                    }
+                    
+                    if(currentUser.role === 'system_admin') {
+                       unsubscribeUsers = listenToUsers();
                     }
 
                     document.body.classList.remove('bg-red-600');
@@ -700,25 +711,24 @@
                     loginView.classList.remove('hidden');
                     eventSelectionView.classList.add('hidden');
                     eventDetailsView.classList.add('hidden');
+                    userManagementView.classList.add('hidden');
                     stopScanner();
                 }
             });
             
             function setupUIVisibilityByRole(role) {
                 const createEventBtn = document.getElementById('create-event-btn');
+                const userManagementBtn = document.getElementById('user-management-btn');
                 const tabDashboard = document.getElementById('tab-dashboard');
                 const tabResidents = document.getElementById('tab-residents');
                 const tabScanner = document.getElementById('tab-scanner');
                 const tabSettings = document.getElementById('tab-settings');
-                const tabUsers = document.getElementById('tab-users');
-                const residentActionsContainer = document.querySelector('#residents-content .flex.items-center.gap-2.flex-wrap');
-                const settingsContent = document.getElementById('settings-content');
-
+                
                 // Set all to a baseline (Staff)
                 createEventBtn.style.display = 'none';
+                userManagementBtn.style.display = 'none';
                 tabResidents.style.display = 'none';
                 tabSettings.style.display = 'none';
-                tabUsers.style.display = 'none';
                 
                 // Dashboard and Scanner are always visible for logged-in users
                 tabDashboard.style.display = 'block';
@@ -739,9 +749,9 @@
                 // System Admin
                 if (role === 'system_admin') {
                     createEventBtn.style.display = 'block';
+                    userManagementBtn.style.display = 'block';
                     tabResidents.style.display = 'block';
                     tabSettings.style.display = 'block';
-                    tabUsers.style.display = 'block';
                 }
             }
 
@@ -751,6 +761,7 @@
                 selectedEventId = null;
                 loginView.classList.add('hidden');
                 eventDetailsView.classList.add('hidden');
+                userManagementView.classList.add('hidden');
                 eventSelectionView.classList.remove('hidden');
                 stopScanner();
                 listenToEvents();
@@ -759,9 +770,21 @@
             function showEventDetailsView(eventId) {
                 selectedEventId = eventId;
                 eventSelectionView.classList.add('hidden');
+                userManagementView.classList.add('hidden');
                 eventDetailsView.classList.remove('hidden');
                 initializeEventData(eventId);
             }
+            
+            function showUserManagementView() {
+                loginView.classList.add('hidden');
+                eventSelectionView.classList.add('hidden');
+                eventDetailsView.classList.add('hidden');
+                userManagementView.classList.remove('hidden');
+            }
+            
+            userManagementBtn.addEventListener('click', showUserManagementView);
+            backToEventsFromUsersBtn.addEventListener('click', showEventSelectionView);
+
 
             document.getElementById('back-to-events-btn').addEventListener('click', showEventSelectionView);
 
@@ -899,18 +922,13 @@
                 
                 unsubscribeResidents();
                 unsubscribeResidents = listenToResidents(eventId);
-
-                unsubscribeUsers();
-                if (currentUser.role === 'system_admin') {
-                   unsubscribeUsers = listenToUsers();
-                }
                 
                 switchTab('dashboard');
             }
 
             // --- Tabs Navigation ---
-            const tabs = { dashboard: document.getElementById('tab-dashboard'), residents: document.getElementById('tab-residents'), scanner: document.getElementById('tab-scanner'), settings: document.getElementById('tab-settings'), users: document.getElementById('tab-users') };
-            const contents = { dashboard: document.getElementById('dashboard-content'), residents: document.getElementById('residents-content'), scanner: document.getElementById('scanner-content'), settings: document.getElementById('settings-content'), users: document.getElementById('users-content') };
+            const tabs = { dashboard: document.getElementById('tab-dashboard'), residents: document.getElementById('tab-residents'), scanner: document.getElementById('tab-scanner'), settings: document.getElementById('tab-settings') };
+            const contents = { dashboard: document.getElementById('dashboard-content'), residents: document.getElementById('residents-content'), scanner: document.getElementById('scanner-content'), settings: document.getElementById('settings-content')};
             
             Object.keys(tabs).forEach(key => {
                 tabs[key].addEventListener('click', () => switchTab(key));
@@ -1832,4 +1850,3 @@
     </script>
 </body>
 </html>
-
