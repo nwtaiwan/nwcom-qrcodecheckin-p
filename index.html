@@ -561,6 +561,7 @@
         let unsubscribeResidents = () => {};
         let unsubscribeSettings = () => {};
         let unsubscribeUsers = () => {};
+        let unsubscribeSession = () => {};
         let currentQuorumRatio = 0;
         let currentPersonQuorumRatio = 0;
 
@@ -646,7 +647,14 @@
                 const password = passwordInput.value;
                 const emailForFirebase = `${username}@qrsystem.app`;
                 try {
-                    await signInWithEmailAndPassword(auth, emailForFirebase, password);
+                    const userCredential = await signInWithEmailAndPassword(auth, emailForFirebase, password);
+                    const user = userCredential.user;
+                    
+                    const sessionId = crypto.randomUUID();
+                    localStorage.setItem('loginSessionId', sessionId);
+                    const userRef = doc(db, 'users', user.uid);
+                    await updateDoc(userRef, { loginSessionId: sessionId });
+
                     if (rememberMeCheckbox.checked) {
                         localStorage.setItem('qrSystemUsername', username);
                     } else {
@@ -672,7 +680,19 @@
                 }
             });
 
-            const handleLogout = () => signOut(auth);
+            const handleLogout = async () => {
+                if (currentUser && currentUser.uid) {
+                    const userRef = doc(db, 'users', currentUser.uid);
+                    try {
+                        await updateDoc(userRef, { loginSessionId: null });
+                    } catch (error) {
+                        console.error("Failed to clear session on logout:", error);
+                    }
+                }
+                localStorage.removeItem('loginSessionId');
+                signOut(auth);
+            };
+
             document.getElementById('logout-btn-events').addEventListener('click', handleLogout);
             document.getElementById('logout-btn-details').addEventListener('click', handleLogout);
             
@@ -680,6 +700,7 @@
                 unsubscribeResidents();
                 unsubscribeSettings();
                 unsubscribeUsers();
+                unsubscribeSession();
 
                 if (user && user.email) {
                     const username = user.email.split('@')[0];
@@ -697,6 +718,18 @@
                     if(currentUser.role === 'system_admin') {
                        unsubscribeUsers = listenToUsers();
                     }
+                    
+                    const localSessionId = localStorage.getItem('loginSessionId');
+                    unsubscribeSession = onSnapshot(doc(db, 'users', user.uid), (userDoc) => {
+                        if (userDoc.exists()) {
+                            const remoteSessionId = userDoc.data().loginSessionId;
+                            if (localSessionId && remoteSessionId && localSessionId !== remoteSessionId) {
+                                unsubscribeSession(); 
+                                alert('您的帳號已在另一台裝置登入，此裝置將自動登出。');
+                                handleLogout();
+                            }
+                        }
+                    });
 
                     document.body.classList.remove('bg-red-600');
                     document.body.classList.add('bg-white');
@@ -1689,8 +1722,12 @@
                 }
 
                 try {
+                    // We need a temporary auth instance to create the user without signing in the admin out
+                    const tempApp = initializeApp(firebaseConfig, 'temp-app-for-user-creation');
+                    const tempAuth = getAuth(tempApp);
+                    
                     const email = `${newUsername}@qrsystem.app`;
-                    const userCredential = await createUserWithEmailAndPassword(auth, email, newPassword);
+                    const userCredential = await createUserWithEmailAndPassword(tempAuth, email, newPassword);
                     const userRef = doc(db, 'users', userCredential.user.uid);
                     await setDoc(userRef, {
                         username: newUsername,
@@ -1716,6 +1753,9 @@
                      userListTbody.innerHTML = '';
                      snapshot.forEach(doc => {
                          const userData = doc.data();
+                         // Do not display the currently logged-in admin in the list
+                         if(doc.id === currentUser.uid) return;
+                         
                          const tr = document.createElement('tr');
                          tr.innerHTML = `
                              <td class="px-2 py-2 whitespace-nowrap">${userData.username}</td>
@@ -1735,12 +1775,10 @@
                 const userId = target.dataset.id;
                 
                 if (target.classList.contains('delete-user-btn')) {
-                    if (confirm('您確定要刪除這個帳號嗎？此操作無法復原。')) {
-                        // Note: Deleting a user from Firebase Auth requires admin privileges and is best done server-side.
-                        // This client-side implementation will only delete the user's role data from Firestore.
+                    if (confirm('您確定要刪除這個帳號嗎？此操作會從資料庫移除，但請注意，您可能需要手動從 Firebase Authentication 主控台刪除使用者以釋放 email。')) {
                         try {
                            await deleteDoc(doc(db, ...userDocPath(userId)));
-                           alert('使用者資料已刪除。請注意，帳號本身仍存在於驗證系統中。');
+                           alert('使用者資料已刪除。');
                         } catch(error) {
                             console.error("Error deleting user doc:", error);
                             alert("刪除使用者資料失敗。");
