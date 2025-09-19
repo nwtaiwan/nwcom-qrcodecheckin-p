@@ -31,24 +31,21 @@
                 margin: 1cm;
             }
 
-            body * {
-                visibility: hidden;
-            }
-            
             body {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
+                background-color: #ffffff !important;
             }
-
-            #print-area, #print-area * {
-                visibility: visible;
+            
+            /* Hide non-printable containers */
+            #app, #public-dashboard-view, #create-event-modal, #resident-modal, #share-modal, #custom-modal, #loader, #custom-print-modal {
+                display: none !important;
             }
-
+            
+            /* Make sure print-area is the only thing visible */
             #print-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
+                display: block !important;
+                position: static; /* Use static positioning for print flow */
             }
 
             .print-page {
@@ -163,8 +160,14 @@
                 <div class="flex items-center space-x-4 mt-4 sm:mt-0">
                     <button id="create-event-btn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-md hover:bg-red-700">新增會議活動</button>
                     <button id="user-management-btn" class="bg-green-500 text-white font-bold py-2 px-4 rounded-md hover:bg-green-600">帳號管理</button>
-                    <span id="user-display" class="text-sm text-gray-500"></span>
-                    <button id="logout-btn-events" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 text-sm font-semibold">登出</button>
+                    <div class="text-right">
+                        <h2 class="font-bold text-gray-800">西北社區QR Code投票系統</h2>
+                        <p class="text-xs text-gray-500">西北好用心  生活更安心</p>
+                        <div class="mt-1">
+                             <span id="user-display" class="text-sm text-gray-500"></span>
+                             <button id="logout-btn-events" class="bg-gray-500 text-white px-3 py-1 rounded-md hover:bg-gray-600 text-xs font-semibold ml-2">登出</button>
+                        </div>
+                    </div>
                 </div>
             </header>
             <div id="events-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -186,9 +189,13 @@
                     <h1 id="community-name-display" class="text-2xl font-bold text-red-700">載入中...</h1>
                     <p id="event-title-display" class="text-2xl text-gray-800 mt-1">QR Code 報到系統</p>
                 </div>
-                <div class="flex items-center space-x-4 mt-4 sm:mt-0">
-                    <span id="user-display-details" class="text-sm text-gray-500"></span>
-                    <button id="logout-btn-details" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 text-sm font-semibold">登出</button>
+                <div class="text-right">
+                    <h2 class="font-bold text-gray-800">西北社區QR Code投票系統</h2>
+                    <p class="text-xs text-gray-500">西北好用心  生活更安心</p>
+                    <div class="mt-1">
+                        <span id="user-display-details" class="text-sm text-gray-500"></span>
+                        <button id="logout-btn-details" class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 text-xs font-semibold ml-2">登出</button>
+                    </div>
                 </div>
             </header>
 
@@ -209,7 +216,7 @@
                     <div class="flex justify-end mb-4">
                         <button id="share-dashboard-btn" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-600 flex items-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" /></svg>
-                            分享儀表板
+                            分享
                         </button>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -273,22 +280,25 @@
                                 <input type="file" id="import-csv-input" class="hidden" accept=".csv">
                                 <button id="import-csv-btn" class="bg-green-500 text-white px-3 py-2 rounded-md hover:bg-green-600 text-sm font-semibold">匯入CSV</button>
                                 <button id="delete-all-residents-btn" class="bg-red-600 text-white px-3 py-2 rounded-md hover:bg-red-700 text-sm font-semibold">全部刪除</button>
-                                <button id="print-roster-btn" class="bg-purple-500 text-white px-3 py-2 rounded-md hover:bg-purple-600 text-sm font-semibold">列印出席名冊</button>
+                                <button id="print-roster-individual-btn" class="bg-indigo-500 text-white px-3 py-2 rounded-md hover:bg-indigo-600 text-sm font-semibold">列印出席名冊(個人戶)</button>
+                                <button id="print-roster-sequential-btn" class="bg-purple-500 text-white px-3 py-2 rounded-md hover:bg-purple-600 text-sm font-semibold">列印出席名冊(<span id="roster-per-page-display">10</span>戶/頁)</button>
+                                <button id="custom-print-roster-btn" class="bg-teal-500 text-white px-3 py-2 rounded-md hover:bg-teal-600 text-sm font-semibold">自訂順序列印</button>
                             </div>
                         </div>
                         <div class="overflow-auto max-h-[70vh]">
-                            <table class="min-w-full divide-y divide-gray-200">
+                            <table class="min-w-full divide-y divide-gray-200" style="table-layout: fixed;">
                                 <thead class="bg-gray-50 sticky top-0">
                                     <tr>
-                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">狀態</th>
-                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QR Code碼</th>
-                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">戶號</th>
-                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">姓名</th>
-                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">住址</th>
-                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">坪數</th>
-                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">區分權(%)</th>
-                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QR Code</th>
-                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 5%;">狀態</th>
+                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 5%;">序號</th>
+                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 10%;">QR Code碼</th>
+                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 10%;">戶號</th>
+                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 10%;">姓名</th>
+                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 20%;">住址</th>
+                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 8%;">坪數</th>
+                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 10%;">區分權(%)</th>
+                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 7%;">QR Code</th>
+                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 15%;">操作</th>
                                     </tr>
                                 </thead>
                                 <tbody id="residents-list" class="bg-white divide-y divide-gray-200"></tbody>
@@ -348,6 +358,10 @@
                                  <label for="event-date" class="block text-sm font-medium text-gray-700">活動日期與時間</label>
                                  <input type="datetime-local" id="event-date" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
                              </div>
+                            <div class="mb-4">
+                                <label for="correction-date" class="block text-sm font-medium text-gray-700">補發更正截止日期</label>
+                                <input type="date" id="correction-date" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
+                            </div>
                              <div class="mb-6">
                                 <label for="person-ratio" class="block text-sm font-medium text-gray-700">法定開會人數比例 (%)</label>
                                 <input type="number" id="person-ratio" step="1" min="0" max="100" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500" placeholder="例如：50">
@@ -356,9 +370,17 @@
                                 <label for="ownership-ratio" class="block text-sm font-medium text-gray-700">法定開會區分權比例 (%)</label>
                                 <input type="number" id="ownership-ratio" step="0.01" min="0" max="100" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500" placeholder="例如：66.67">
                             </div>
+                             <div class="mb-4">
+                                <label for="attendance-fee-label" class="block text-sm font-medium text-gray-700">備用欄位標題</label>
+                                <input type="text" id="attendance-fee-label" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500" placeholder="例如：出席費">
+                            </div>
                             <div class="mb-6">
-                                <label for="attendance-fee" class="block text-sm font-medium text-gray-700">出席費金額</label>
-                                <input type="number" id="attendance-fee" min="0" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500" placeholder="例如：500">
+                                <label for="attendance-fee" class="block text-sm font-medium text-gray-700">備用內容</label>
+                                <textarea id="attendance-fee" rows="3" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500" placeholder="例如：□ 500元&#10;□ 300元"></textarea>
+                            </div>
+                             <div class="mb-4">
+                                <label for="residents-per-page" class="block text-sm font-medium text-gray-700">每頁列印戶數 (多戶名冊)</label>
+                                <input type="number" id="residents-per-page" min="1" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500" placeholder="預設: 10">
                             </div>
                              <button type="submit" class="w-full bg-red-600 text-white font-bold py-2 px-4 rounded-md hover:bg-red-700">儲存設定</button>
                         </form>
@@ -521,6 +543,44 @@
         </div>
     </div>
 
+    <!-- Custom Print Modal -->
+    <div id="custom-print-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50 flex items-center justify-center">
+        <div class="relative mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 text-center">自訂列印名冊</h3>
+                <div class="mt-4 px-7 py-3 max-h-[60vh] overflow-y-auto space-y-4" id="custom-print-pages-container">
+                    <!-- Page configuration rows will be injected here -->
+                </div>
+                <div class="px-7 py-3">
+                    <button id="add-print-page-btn" class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-600">新增頁面</button>
+                </div>
+                <div class="items-center px-4 py-3 space-x-4 text-center">
+                    <button id="generate-custom-roster-btn" class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-auto shadow-sm hover:bg-red-700 focus:outline-none">產生名冊</button>
+                    <button id="cancel-custom-print-btn" class="px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md w-auto shadow-sm hover:bg-gray-300 focus:outline-none">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Modal -->
+    <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 overflow-y-auto h-full w-full hidden z-50 flex items-center justify-center">
+        <div class="relative mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <div class="mt-3 text-center">
+                <h3 id="modal-title" class="text-lg leading-6 font-medium text-gray-900"></h3>
+                <div class="mt-2 px-7 py-3">
+                    <p id="modal-message" class="text-sm text-gray-500"></p>
+                </div>
+                <div id="modal-buttons" class="items-center px-4 py-3 space-x-4">
+                    <!-- Buttons will be injected by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loader" class="fixed inset-0 bg-gray-900 bg-opacity-60 h-full w-full hidden z-50 flex items-center justify-center">
+        <div class="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-white"></div>
+    </div>
 
     <!-- Print Area -->
     <div id="print-area" class="hidden"></div>
@@ -534,14 +594,14 @@
 
         // --- Firebase Configuration ---
         const firebaseConfig = {
-          apiKey: "AIzaSyAPoAvqWOusJNrBXDsxpXqPNp92bm7IWPU",
-          authDomain: "nwcom-qrcodecheckin-02.firebaseapp.com",
-          projectId: "nwcom-qrcodecheckin-02",
-          storageBucket: "nwcom-qrcodecheckin-02.appspot.com",
-          messagingSenderId: "602083293864",
-          appId: "1:602083293864:web:9689c7f371c3fb4ff8609d",
-          measurementId: "G-9KZ6SXDRNT"
-        };
+  apiKey: "AIzaSyAPoAvqWOusJNrBXDsxpXqPNp92bm7IWPU",
+  authDomain: "nwcom-qrcodecheckin-02.firebaseapp.com",
+  projectId: "nwcom-qrcodecheckin-02",
+  storageBucket: "nwcom-qrcodecheckin-02.firebasestorage.app",
+  messagingSenderId: "602083293864",
+  appId: "1:602083293864:web:9689c7f371c3fb4ff8609d",
+  measurementId: "G-9KZ6SXDRNT"
+};
         
         // --- App Initialization ---
         let app, auth, db;
@@ -564,6 +624,7 @@
         let unsubscribeSession = () => {};
         let currentQuorumRatio = 0;
         let currentPersonQuorumRatio = 0;
+        let currentResidentsPerPage = 10;
 
         // --- Firestore Paths ---
         const eventsCollectionPath = () => ["events"];
@@ -612,8 +673,58 @@
             const addUserForm = document.getElementById('add-user-form');
             const userManagementBtn = document.getElementById('user-management-btn');
             const backToEventsFromUsersBtn = document.getElementById('back-to-events-from-users-btn');
+            const customModal = document.getElementById('custom-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalMessage = document.getElementById('modal-message');
+            const modalButtons = document.getElementById('modal-buttons');
+            const loader = document.getElementById('loader');
             
+            // Custom Print Modal Elements
+            const customPrintModal = document.getElementById('custom-print-modal');
+            const customPrintPagesContainer = document.getElementById('custom-print-pages-container');
+            const addPrintPageBtn = document.getElementById('add-print-page-btn');
+            const generateCustomRosterBtn = document.getElementById('generate-custom-roster-btn');
+            const cancelCustomPrintBtn = document.getElementById('cancel-custom-print-btn');
+            const customPrintRosterBtn = document.getElementById('custom-print-roster-btn');
+
             appContainer.style.display = 'block';
+
+            // --- UI Helpers (Modals and Loader) ---
+            function showLoader() { loader.classList.remove('hidden'); }
+            function hideLoader() { loader.classList.add('hidden'); }
+
+            function showCustomAlert(message, title = '通知') {
+                modalTitle.textContent = title;
+                modalMessage.textContent = message;
+                modalButtons.innerHTML = `<button id="modal-ok-btn" class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-1/2 shadow-sm hover:bg-red-700 focus:outline-none">確定</button>`;
+                customModal.classList.remove('hidden');
+
+                document.getElementById('modal-ok-btn').onclick = () => {
+                    customModal.classList.add('hidden');
+                };
+            }
+
+            function showCustomConfirm(message, title = '請確認') {
+                modalTitle.textContent = title;
+                modalMessage.textContent = message;
+                modalButtons.innerHTML = `
+                    <button id="modal-confirm-btn" class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-auto shadow-sm hover:bg-red-700 focus:outline-none">確定</button>
+                    <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md w-auto shadow-sm hover:bg-gray-300 focus:outline-none">取消</button>
+                `;
+                customModal.classList.remove('hidden');
+
+                return new Promise((resolve) => {
+                    document.getElementById('modal-confirm-btn').onclick = () => {
+                        customModal.classList.add('hidden');
+                        resolve(true);
+                    };
+                    document.getElementById('modal-cancel-btn').onclick = () => {
+                        customModal.classList.add('hidden');
+                        resolve(false);
+                    };
+                });
+            }
+
 
             // --- UI Logic ---
             function setupUI() {
@@ -643,6 +754,7 @@
             // --- Authentication & Role Management ---
             loginForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
+                showLoader();
                 const username = usernameInput.value;
                 const password = passwordInput.value;
                 const emailForFirebase = `${username}@qrsystem.app`;
@@ -667,16 +779,18 @@
                            const userCredential = await createUserWithEmailAndPassword(auth, 'test@qrsystem.app', '123456');
                            const userRef = doc(db, 'users', userCredential.user.uid);
                            await setDoc(userRef, { username: 'test', email: userCredential.user.email, role: 'system_admin' });
-                           alert('測試管理員帳號已建立，請重新登入。');
+                           showCustomAlert('測試管理員帳號已建立，請重新登入。');
 
                         } catch (creationError) {
-                            alert(`測試帳號建立失敗: ${creationError.message}`);
+                            showCustomAlert(`測試帳號建立失敗: ${creationError.message}`);
                         }
                     } else if (error.code === 'auth/invalid-credential') {
-                            alert(`登入失敗: 帳號或密碼錯誤。`);
+                            showCustomAlert(`登入失敗: 帳號或密碼錯誤。`);
                     } else {
-                            alert(`登入失敗: ${error.message}`);
+                            showCustomAlert(`登入失敗: ${error.message}`);
                     }
+                } finally {
+                    hideLoader();
                 }
             });
 
@@ -725,21 +839,21 @@
                             const remoteSessionId = userDoc.data().loginSessionId;
                             if (localSessionId && remoteSessionId && localSessionId !== remoteSessionId) {
                                 unsubscribeSession(); 
-                                alert('您的帳號已在另一台裝置登入，此裝置將自動登出。');
+                                showCustomAlert('您的帳號已在另一台裝置登入，此裝置將自動登出。', '強制登出');
                                 handleLogout();
                             }
                         }
                     });
 
                     document.body.classList.remove('bg-red-600');
-                    document.body.classList.add('bg-white');
+                    document.body.classList.add('bg-gray-50');
                     userDisplay.textContent = `${currentUser.name} (${currentUser.role})`;
                     userDisplayDetails.textContent = `${currentUser.name} (${currentUser.role})`;
                     setupUIVisibilityByRole(currentUser.role);
                     showEventSelectionView();
                 } else {
                     currentUser = { uid: null, name: null, role: null };
-                    document.body.classList.remove('bg-white');
+                    document.body.classList.remove('bg-gray-50');
                     document.body.classList.add('bg-red-600');
                     loginView.classList.remove('hidden');
                     eventSelectionView.classList.add('hidden');
@@ -886,7 +1000,7 @@
                     });
                 }, error => {
                     console.error("Error listening to events collection:", error);
-                    alert("無法讀取活動列表，請檢查您的網路連線或 Firebase 安全規則。");
+                    showCustomAlert("無法讀取活動列表，請檢查您的網路連線或 Firebase 安全規則。");
                 });
             }
             
@@ -895,13 +1009,16 @@
                 if (deleteButton) {
                     e.stopPropagation();
                     const eventId = deleteButton.dataset.id;
-                    if (confirm('您確定要刪除這個活動嗎？此操作將一併刪除所有住戶資料，且無法復原！')) {
+                    if (await showCustomConfirm('您確定要刪除這個活動嗎？此操作將一併刪除所有住戶資料，且無法復原！')) {
+                        showLoader();
                         try {
                             await deleteEventAndSubcollection(eventId);
-                            alert('活動已成功刪除。');
+                            showCustomAlert('活動已成功刪除。');
                         } catch (error) {
                             console.error("Error deleting event from card:", error);
-                            alert('刪除活動失敗。');
+                            showCustomAlert('刪除活動失敗。');
+                        } finally {
+                            hideLoader();
                         }
                     }
                 }
@@ -925,8 +1042,16 @@
                 const eventDate = document.getElementById('new-event-date').value;
 
                 if (!communityName || !eventName || !eventDate) {
-                    alert('請填寫所有欄位！');
+                    showCustomAlert('請填寫所有欄位！');
                     return;
+                }
+                showLoader();
+
+                let correctionDateValue = '';
+                if (eventDate) {
+                    const d = new Date(eventDate);
+                    d.setDate(d.getDate() - 4);
+                    correctionDateValue = d.toISOString().split('T')[0];
                 }
 
                 try {
@@ -934,8 +1059,12 @@
                         communityName,
                         eventName,
                         eventDate,
-                        ownershipRatio: 66.67, // Default value
-                        personRatio: 50, // Default value
+                        ownershipRatio: 66.67,
+                        personRatio: 50,
+                        attendanceFeeLabel: '出席費',
+                        attendanceFee: '□ 500元\n□ 300元',
+                        correctionDate: correctionDateValue,
+                        residentsPerPage: 10,
                         createdAt: serverTimestamp(),
                         creatorId: currentUser.uid,
                         creatorName: currentUser.name
@@ -943,7 +1072,9 @@
                     createEventModal.classList.add('hidden');
                 } catch (error) {
                     console.error("Error creating event:", error);
-                    alert('建立活動失敗。');
+                    showCustomAlert('建立活動失敗。');
+                } finally {
+                    hideLoader();
                 }
             });
 
@@ -998,9 +1129,15 @@
                         document.getElementById('event-date').value = data.eventDate || '';
                         document.getElementById('ownership-ratio').value = data.ownershipRatio || '';
                         document.getElementById('person-ratio').value = data.personRatio || '';
-                        document.getElementById('attendance-fee').value = data.attendanceFee || '';
+                        document.getElementById('correction-date').value = data.correctionDate || '';
+                        document.getElementById('attendance-fee-label').value = data.attendanceFeeLabel || '出席費';
+                        document.getElementById('attendance-fee').value = data.attendanceFee || '□ 500元\n□ 300元';
+                        document.getElementById('residents-per-page').value = data.residentsPerPage || 10;
                         currentQuorumRatio = parseFloat(data.ownershipRatio) || 0;
                         currentPersonQuorumRatio = parseFloat(data.personRatio) || 0;
+                        currentResidentsPerPage = parseInt(data.residentsPerPage, 10) || 10;
+                        
+                        document.getElementById('roster-per-page-display').textContent = currentResidentsPerPage;
 
                         document.getElementById('community-name-display').textContent = data.communityName || '請先設定社區名稱';
                         document.getElementById('event-title-display').textContent = data.eventName || 'QR Code 報到系統';
@@ -1012,6 +1149,7 @@
             settingsForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 if (!selectedEventId) return;
+                showLoader();
                 const eventRef = doc(db, ...eventDocPath(selectedEventId));
                 try {
                     await updateDoc(eventRef, {
@@ -1020,12 +1158,17 @@
                         eventDate: document.getElementById('event-date').value,
                         ownershipRatio: document.getElementById('ownership-ratio').value,
                         personRatio: document.getElementById('person-ratio').value,
+                        correctionDate: document.getElementById('correction-date').value,
+                        attendanceFeeLabel: document.getElementById('attendance-fee-label').value,
                         attendanceFee: document.getElementById('attendance-fee').value,
+                        residentsPerPage: parseInt(document.getElementById('residents-per-page').value, 10) || 10,
                     });
-                    alert('設定已儲存！');
+                    showCustomAlert('設定已儲存！');
                 } catch (error) {
                     console.error("Error saving settings:", error);
-                    alert('儲存失敗，請檢查網路連線。');
+                    showCustomAlert('儲存失敗，請檢查網路連線。');
+                } finally {
+                    hideLoader();
                 }
             });
             
@@ -1070,6 +1213,7 @@
                 e.preventDefault();
                 if (!selectedEventId) return;
                 
+                showLoader();
                 const qrcodeValue = residentQrcodeValueInput.value;
                 const unit = residentUnitInput.value;
                 const name = residentNameInput.value;
@@ -1091,7 +1235,9 @@
                     closeResidentModal();
                 } catch (error) {
                     console.error("Error saving resident:", error);
-                    alert('儲存住戶失敗！請確認QR Code生成碼是否唯一。');
+                    showCustomAlert('儲存住戶失敗！請確認QR Code生成碼是否唯一。');
+                } finally {
+                    hideLoader();
                 }
             });
 
@@ -1106,7 +1252,7 @@
                     // Sort by creation time to respect CSV import order
                     allResidentsForSelectedEvent.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
                     
-                    allResidentsForSelectedEvent.forEach(resident => {
+                    allResidentsForSelectedEvent.forEach((resident, index) => {
                         const tr = document.createElement('tr');
                         tr.className = resident.isCheckedIn ? 'checked-in-row' : '';
                         
@@ -1115,11 +1261,12 @@
                         const qrValue = resident.qrcodeValue || resident.id;
 
                         tr.innerHTML = `
-                            <td class="px-2 py-2 whitespace-nowrap text-center"><span class="inline-block h-4 w-4 rounded-full ${resident.isCheckedIn ? 'bg-green-500' : 'bg-gray-300'}"></span></td>
-                            <td class="px-2 py-2 whitespace-nowrap">${resident.qrcodeValue || ''}</td>
-                            <td class="px-2 py-2 whitespace-nowrap">${resident.unit}</td>
-                            <td class="px-2 py-2 whitespace-nowrap">${resident.name}</td>
-                            <td class="px-2 py-2 whitespace-nowrap">${resident.address || ''}</td>
+                            <td class="px-2 py-2 whitespace-nowrap text-center">${resident.isCheckedIn ? '✔️' : '❌'}</td>
+                            <td class="px-2 py-2 whitespace-nowrap text-center">${index + 1}</td>
+                            <td class="px-2 py-2 whitespace-nowrap truncate">${resident.qrcodeValue || ''}</td>
+                            <td class="px-2 py-2 whitespace-nowrap truncate">${resident.unit}</td>
+                            <td class="px-2 py-2 whitespace-nowrap truncate">${resident.name}</td>
+                            <td class="px-2 py-2 whitespace-nowrap truncate">${resident.address || ''}</td>
                             <td class="px-2 py-2 whitespace-nowrap">${resident.area || 0}</td>
                             <td class="px-2 py-2 whitespace-nowrap">${resident.ownership || 0}%</td>
                             <td class="px-2 py-2"><div id="qr-${resident.id}" class="mx-auto"></div></td>
@@ -1134,7 +1281,7 @@
                     });
 
                     if (allResidentsForSelectedEvent.length === 0) {
-                        residentsListTbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-gray-500">請新增住戶</td></tr>`;
+                        residentsListTbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-gray-500">請新增住戶</td></tr>`;
                     }
 
                     updateDashboardCalculations();
@@ -1225,7 +1372,7 @@
                 const residentId = target.dataset.id;
                 
                 if (target.classList.contains('delete-btn')) {
-                    if (confirm('確定要刪除這位住戶嗎？')) {
+                    if (await showCustomConfirm('確定要刪除這位住戶嗎？')) {
                         await deleteDoc(doc(db, ...residentDocPath(selectedEventId, residentId)));
                     }
                 }
@@ -1240,11 +1387,11 @@
                     if(resident) {
                         const residentRef = doc(db, ...residentDocPath(selectedEventId, residentId));
                         if (resident.isCheckedIn) {
-                            if (confirm(`確定要取消 ${resident.unit} ${resident.name} 的報到嗎？`)) {
+                            if (await showCustomConfirm(`確定要取消 ${resident.unit} ${resident.name} 的報到嗎？`)) {
                                 await updateDoc(residentRef, { isCheckedIn: false, checkInTimestamp: null, checkInMethod: null, checkInBy: null });
                             }
                         } else {
-                            if (confirm(`確定要為 ${resident.unit} ${resident.name} 手動報到嗎？`)) {
+                            if (await showCustomConfirm(`確定要為 ${resident.unit} ${resident.name} 手動報到嗎？`)) {
                                 await updateDoc(residentRef, { isCheckedIn: true, checkInTimestamp: new Date(), checkInMethod: '手動', checkInBy: currentUser.name });
                             }
                         }
@@ -1346,64 +1493,14 @@
             }
             
             // --- Reset, Delete, and Print ---
-            async function deleteEventAndSubcollection(eventId) {
-                if (!eventId) return;
-                const residentsColRef = collection(db, ...residentsCollectionPath(eventId));
-                const residentsSnapshot = await getDocs(residentsColRef);
-                if (!residentsSnapshot.empty) {
-                    const batch = writeBatch(db);
-                    residentsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
-                    await batch.commit();
-                }
-                await deleteDoc(doc(db, ...eventDocPath(eventId)));
-            }
-
-            document.getElementById('reset-checkin-btn').addEventListener('click', async () => {
-                if (confirm('您確定要重設此活動所有住戶的報到紀錄嗎？此操作無法復原！')) {
-                    const batch = writeBatch(db);
-                    const residentsToCheck = allResidentsForSelectedEvent.filter(r => r.isCheckedIn);
-                    if(residentsToCheck.length > 0) {
-                        residentsToCheck.forEach(resident => {
-                            const residentRef = doc(db, ...residentDocPath(selectedEventId, resident.id));
-                            batch.update(residentRef, { isCheckedIn: false, checkInTimestamp: null, checkInMethod: null, checkInBy: null });
-                        });
-                        await batch.commit();
-                        alert('所有報到紀錄已成功重設！');
-                    } else {
-                        alert('目前沒有任何報到紀錄可重設。');
-                    }
-                }
-            });
-
-            document.getElementById('delete-event-btn').addEventListener('click', async () => {
-                const eventRef = doc(db, ...eventDocPath(selectedEventId));
-                const eventSnap = await getDoc(eventRef);
-                if (eventSnap.exists()) {
-                    const eventData = eventSnap.data();
-                    if (eventData.creatorId && eventData.creatorId !== currentUser.uid) {
-                        alert('權限不足！只有建立者才能刪除此活動。');
-                        return;
-                    }
-                }
-
-                if (confirm('您確定要刪除整個活動嗎？包含所有住戶資料和報到紀錄，此操作無法復原！')) {
-                    try {
-                        await deleteEventAndSubcollection(selectedEventId);
-                        alert('活動已刪除！');
-                        showEventSelectionView();
-                    } catch (error) {
-                        console.error("Error deleting event from settings:", error);
-                        alert("刪除活動失敗。");
-                    }
-                }
-            });
-
-            document.getElementById('print-roster-btn').addEventListener('click', () => {
+            function generateAndPrintRoster(residentsToPrint, residentsPerPage, onComplete) {
                 const printArea = document.getElementById('print-area');
                 const communityName = document.getElementById('community-name-display').textContent;
                 const eventName = document.getElementById('event-title-display').textContent;
                 const eventDateValue = document.getElementById('event-date').value;
-                const attendanceFee = document.getElementById('attendance-fee').value || '_____';
+                const attendanceFeeLabel = document.getElementById('attendance-fee-label').value || '出席費';
+                const attendanceFee = (document.getElementById('attendance-fee').value || '_____').replace(/\n/g, '<br>');
+                const correctionDateValue = document.getElementById('correction-date').value;
                 
                 let formattedEventDate = '';
                 if (eventDateValue) {
@@ -1422,10 +1519,10 @@
 
 
                 let printContent = '';
-                const residentsPerPage = 10;
                 
-                if (allResidentsForSelectedEvent.length === 0) {
-                    alert('沒有住戶資料可列印。');
+                if (residentsToPrint.length === 0) {
+                    showCustomAlert('沒有住戶資料可列印。');
+                    if(onComplete) onComplete();
                     return;
                 }
                 
@@ -1461,13 +1558,13 @@
                 }
 
 
-                const numPages = Math.ceil(allResidentsForSelectedEvent.length / residentsPerPage);
+                const numPages = Math.ceil(residentsToPrint.length / residentsPerPage);
                 
 
                 for (let i = 0; i < numPages; i++) {
                     const start = i * residentsPerPage;
                     const end = start + residentsPerPage;
-                    const pageResidents = allResidentsForSelectedEvent.slice(start, end);
+                    const pageResidents = residentsToPrint.slice(start, end);
 
                     printContent += `<div class="print-page">`;
                     // Header
@@ -1492,7 +1589,7 @@
                                     <th style="width: 1.8cm;">簽到</th>
                                     <th style="width: 1.8cm;">是否委<br>託出席</th>
                                     <th style="width: 3.8cm;">委託關係</th>
-                                    <th style="width: 1.8cm;">出席費</th>
+                                    <th style="width: 1.8cm;">${attendanceFeeLabel}</th>
                                     <th style="width: 1.8cm;">簽退</th>
                                 </tr>
                             </thead>
@@ -1501,9 +1598,10 @@
 
                     pageResidents.forEach((resident, index) => {
                         const residentId = resident.id;
+                        const originalIndex = allResidentsForSelectedEvent.findIndex(r => r.id === residentId) + 1;
                         printContent += `
                             <tr>
-                                <td>${start + index + 1}</td>
+                                <td>${originalIndex}</td>
                                 <td><div id="print-qr-${residentId}" style="width: 50px; height: 50px; margin: auto;"></div></td>
                                 <td>${resident.unit || ''}</td>
                                 <td style="word-break: break-all;">${resident.name || ''}</td>
@@ -1520,24 +1618,81 @@
                                     <div><span style="font-size: 1.2em; margin-right: 4px;">□</span>承租人</div>
                                 </td>
                                 <td style="text-align: left; font-size: 8pt; line-height: 1.3;">
-                                     <div style="display: flex; align-items: center;"><span style="font-size: 1.2em; margin-right: 4px;">□</span>${attendanceFee} 元</div>
+                                     <div style="display: flex; align-items: flex-start;">
+                                        <div>${attendanceFee}</div>
+                                     </div>
                                 </td>
                                 <td></td>
                             </tr>
                         `;
                     });
                     
-                    if(pageResidents.length < residentsPerPage) {
+                    if(pageResidents.length < residentsPerPage && residentsPerPage !== 1) {
                         for(let j=0; j < (residentsPerPage - pageResidents.length); j++){
                             printContent += `
                             <tr>
-                                <td>${start + pageResidents.length + j + 1}</td>
+                                <td></td>
                                 <td></td><td></td><td></td><td></td>
                                 <td></td><td></td><td></td><td></td>
                                 <td></td>
                             </tr>
                             `;
                         }
+                    }
+
+                    if (residentsPerPage === 1) {
+                        let meetingDateStr = '';
+                        let correctionDateStr = '____ 年 __ 月 __ 日';
+
+                        if (eventDateValue) {
+                            const eventDate = new Date(eventDateValue);
+                            const rocYear = eventDate.getFullYear() - 1911;
+                            const month = eventDate.getMonth() + 1;
+                            const day = eventDate.getDate();
+                            meetingDateStr = `${rocYear} 年 ${month} 月 ${day} 日`;
+                        }
+                        
+                        if (correctionDateValue) {
+                            const d = new Date(correctionDateValue);
+                            const rocYear = d.getFullYear() - 1911;
+                            const month = d.getMonth() + 1;
+                            const day = d.getDate();
+                            correctionDateStr = `${rocYear} 年 ${month} 月 ${day} 日`;
+                        }
+
+
+                        const todayDateStr = `中 華 民 國&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;年&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;月&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;日`;
+                        
+                        const proxyText = `
+                            <div style="text-align: left; font-size: 12pt; line-height: 2.2; padding: 5px;">
+                                <h3 style="text-align: center; font-size: 16pt; font-weight: bold; margin: 7px 0;">會議出席委託書</h3>
+                                致  ${communityName} ：預定於 ${meetingDateStr}舉行之 ${eventName}，<br>
+                                本人謹委託 ____________________ 先生（女士）代表出席區分所有權人會議，並於區分所有權人會議<br>
+                                中行使各項本人應有之權利與義務，區分所有標的物標示地址如上。<br><br>
+                                區分所有權人 姓名：________________（簽章） 區分所有權人 連絡電話：____________________<br>
+                                受委託人 姓名：________________（簽章） 受委託人 連絡電話：____________________<br>
+                                受委託人 地址：________________________________________________________<br><br>
+                                依公寓大廈管理條例規定，受委託人需具備以下四種任一身份，請自行勾選，如有不實責任自負<br>
+                                □ 配偶 □ 有行為能力之直系血親 □ 其他區分所有權人 □ 承租人<br><br>
+                                <strong>注意事項:</strong><br>
+                                1.為便於日後向主管機關核備作業，請區權人及受委託人務必簽名或蓋章。<br>
+                                2.區權人資料如有錯誤或遺失時，請於 ${correctionDateStr} 前至管理服務中心更正及申請補發，管理<br>
+                                服務中心將於會議前一天投進區分所有權人信箱。<br><br>
+                                <div style="text-align: center; width: 100%;">${todayDateStr}</div>
+                            </div>
+                        `;
+
+
+                        printContent += `
+                            <tr>
+                                <td colspan="10" style="text-align: left; padding: 8px; height: 1.5cm;">□已核對出席者身分證件</td>
+                            </tr>
+                            <tr>
+                                <td colspan="10" style="height: auto;">
+                                    ${proxyText}
+                                </td>
+                            </tr>
+                        `;
                     }
 
                     printContent += `
@@ -1553,8 +1708,8 @@
                 printArea.innerHTML = printContent;
                 
                 // Render QR Codes after they are in the DOM
-                for (let i = 0; i < allResidentsForSelectedEvent.length; i++) {
-                    const resident = allResidentsForSelectedEvent[i];
+                for (let i = 0; i < residentsToPrint.length; i++) {
+                    const resident = residentsToPrint[i];
                     const qrElement = document.getElementById(`print-qr-${resident.id}`);
                     if (qrElement) {
                         const qrValue = resident.qrcodeValue || resident.id;
@@ -1572,13 +1727,80 @@
                 setTimeout(() => {
                     window.print();
                     printArea.classList.add('hidden');
+                    if (onComplete) onComplete();
                 }, 500);
+            }
+
+            async function deleteEventAndSubcollection(eventId) {
+                if (!eventId) return;
+                const residentsColRef = collection(db, ...residentsCollectionPath(eventId));
+                const residentsSnapshot = await getDocs(residentsColRef);
+                if (!residentsSnapshot.empty) {
+                    const batch = writeBatch(db);
+                    residentsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+                    await batch.commit();
+                }
+                await deleteDoc(doc(db, ...eventDocPath(eventId)));
+            }
+            
+            document.getElementById('print-roster-sequential-btn').addEventListener('click', () => {
+                showLoader();
+                generateAndPrintRoster(allResidentsForSelectedEvent, currentResidentsPerPage || 10, hideLoader);
+            });
+            document.getElementById('print-roster-individual-btn').addEventListener('click', () => {
+                showLoader();
+                generateAndPrintRoster(allResidentsForSelectedEvent, 1, hideLoader);
+            });
+
+            document.getElementById('reset-checkin-btn').addEventListener('click', async () => {
+                if (await showCustomConfirm('您確定要重設此活動所有住戶的報到紀錄嗎？此操作無法復原！')) {
+                    const residentsToCheck = allResidentsForSelectedEvent.filter(r => r.isCheckedIn);
+                    if(residentsToCheck.length > 0) {
+                        showLoader();
+                        const batch = writeBatch(db);
+                        residentsToCheck.forEach(resident => {
+                            const residentRef = doc(db, ...residentDocPath(selectedEventId, resident.id));
+                            batch.update(residentRef, { isCheckedIn: false, checkInTimestamp: null, checkInMethod: null, checkInBy: null });
+                        });
+                        await batch.commit();
+                        hideLoader();
+                        showCustomAlert('所有報到紀錄已成功重設！');
+                    } else {
+                        showCustomAlert('目前沒有任何報到紀錄可重設。');
+                    }
+                }
+            });
+
+            document.getElementById('delete-event-btn').addEventListener('click', async () => {
+                const eventRef = doc(db, ...eventDocPath(selectedEventId));
+                const eventSnap = await getDoc(eventRef);
+                if (eventSnap.exists()) {
+                    const eventData = eventSnap.data();
+                    if (eventData.creatorId && eventData.creatorId !== currentUser.uid) {
+                        showCustomAlert('權限不足！只有建立者才能刪除此活動。');
+                        return;
+                    }
+                }
+
+                if (await showCustomConfirm('您確定要刪除整個活動嗎？包含所有住戶資料和報到紀錄，此操作無法復原！')) {
+                    showLoader();
+                    try {
+                        await deleteEventAndSubcollection(selectedEventId);
+                        showCustomAlert('活動已刪除！');
+                        showEventSelectionView();
+                    } catch (error) {
+                        console.error("Error deleting event from settings:", error);
+                        showCustomAlert("刪除活動失敗。");
+                    } finally {
+                        hideLoader();
+                    }
+                }
             });
 
             // --- CSV and Mass Delete ---
             document.getElementById('export-csv-btn').addEventListener('click', () => {
                 if (allResidentsForSelectedEvent.length === 0) {
-                    alert('沒有住戶資料可匯出。');
+                    showCustomAlert('沒有住戶資料可匯出。');
                     return;
                 }
                 const headers = ['qrcodeValue', 'unit', 'name', 'address', 'area', 'ownership'];
@@ -1612,23 +1834,24 @@
                     const text = e.target.result;
                     const rows = text.split('\n').filter(row => row.trim() !== '');
                     if (rows.length < 2) {
-                        alert('CSV檔案格式不符或沒有資料。');
+                        showCustomAlert('CSV檔案格式不符或沒有資料。');
                         return;
                     }
 
                     const headers = rows[0].trim().split(',').map(h => h.replace(/"/g, '').trim());
                     const requiredHeaders = ['qrcodeValue', 'unit', 'name', 'ownership'];
                     if (!requiredHeaders.every(h => headers.includes(h))) {
-                        alert(`CSV標頭缺少必要欄位。必須包含: ${requiredHeaders.join(', ')}`);
+                        showCustomAlert(`CSV標頭缺少必要欄位。必須包含: ${requiredHeaders.join(', ')}`);
                         return;
                     }
 
-                    if (!confirm(`即將匯入 ${rows.length - 1} 筆資料，這將會新增至現有列表，確定嗎？`)) return;
-
+                    if (!(await showCustomConfirm(`即將匯入 ${rows.length - 1} 筆資料，這將會新增至現有列表，確定嗎？`))) return;
+                    
+                    showLoader();
                     const batch = writeBatch(db);
                     const importTimestamp = Date.now();
                     for (let i = 1; i < rows.length; i++) {
-                        const values = rows[i].trim().split(',').map(v => v.replace(/"/g, ''));
+                        const values = rows[i].trim().split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.replace(/"/g, ''));
                         let residentData = {};
                         headers.forEach((header, index) => {
                             residentData[header] = values[index] || '';
@@ -1650,10 +1873,12 @@
 
                     try {
                         await batch.commit();
-                        alert(`成功匯入 ${rows.length - 1} 筆住戶資料！`);
+                        showCustomAlert(`成功匯入 ${rows.length - 1} 筆住戶資料！`);
                     } catch (error) {
                         console.error("CSV import failed: ", error);
-                        alert("匯入失敗，請檢查CSV檔案格式與內容。");
+                        showCustomAlert("匯入失敗，請檢查CSV檔案格式與內容。");
+                    } finally {
+                        hideLoader();
                     }
                 };
                 reader.readAsText(file, "UTF-8");
@@ -1662,10 +1887,11 @@
 
             document.getElementById('delete-all-residents-btn').addEventListener('click', async () => {
                 if (allResidentsForSelectedEvent.length === 0) {
-                    alert('沒有住戶資料可刪除。');
+                    showCustomAlert('沒有住戶資料可刪除。');
                     return;
                 }
-                if(confirm(`您確定要刪除此活動的全部 ${allResidentsForSelectedEvent.length} 筆住戶資料嗎？此操作無法復原！`)) {
+                if(await showCustomConfirm(`您確定要刪除此活動的全部 ${allResidentsForSelectedEvent.length} 筆住戶資料嗎？此操作無法復原！`)) {
+                    showLoader();
                     const batch = writeBatch(db);
                     allResidentsForSelectedEvent.forEach(resident => {
                         const residentRef = doc(db, ...residentDocPath(selectedEventId, resident.id));
@@ -1673,10 +1899,12 @@
                     });
                     try {
                         await batch.commit();
-                        alert('已成功刪除所有住戶。');
+                        showCustomAlert('已成功刪除所有住戶。');
                     } catch (error) {
                         console.error("Delete all residents failed: ", error);
-                        alert("刪除失敗，請再試一次。");
+                        showCustomAlert("刪除失敗，請再試一次。");
+                    } finally {
+                        hideLoader();
                     }
                 }
             });
@@ -1713,14 +1941,14 @@
                 const newUserRole = document.getElementById('new-user-role').value;
 
                 if(!newUsername || !newPassword){
-                    alert('請填寫帳號和密碼。');
+                    showCustomAlert('請填寫帳號和密碼。');
                     return;
                 }
                 if(newPassword.length < 6){
-                    alert('密碼長度至少需要6個字元。');
+                    showCustomAlert('密碼長度至少需要6個字元。');
                     return;
                 }
-
+                showLoader();
                 try {
                     // We need a temporary auth instance to create the user without signing in the admin out
                     const tempApp = initializeApp(firebaseConfig, 'temp-app-for-user-creation');
@@ -1734,15 +1962,17 @@
                         email: email,
                         role: newUserRole
                     });
-                    alert(`帳號 ${newUsername} 建立成功！`);
+                    showCustomAlert(`帳號 ${newUsername} 建立成功！`);
                     addUserForm.reset();
                 } catch (error) {
                     console.error("Error creating user:", error);
                     if(error.code === 'auth/email-already-in-use'){
-                        alert('錯誤：此帳號名稱已被使用。');
+                        showCustomAlert('錯誤：此帳號名稱已被使用。');
                     } else {
-                        alert(`建立帳號時發生錯誤： ${error.message}`);
+                        showCustomAlert(`建立帳號時發生錯誤： ${error.message}`);
                     }
+                } finally {
+                    hideLoader();
                 }
             });
 
@@ -1775,13 +2005,16 @@
                 const userId = target.dataset.id;
                 
                 if (target.classList.contains('delete-user-btn')) {
-                    if (confirm('您確定要刪除這個帳號嗎？此操作會從資料庫移除，但請注意，您可能需要手動從 Firebase Authentication 主控台刪除使用者以釋放 email。')) {
+                    if (await showCustomConfirm('您確定要刪除這個帳號嗎？此操作會從資料庫移除，但請注意，您可能需要手動從 Firebase Authentication 主控台刪除使用者以釋放 email。')) {
+                        showLoader();
                         try {
                            await deleteDoc(doc(db, ...userDocPath(userId)));
-                           alert('使用者資料已刪除。');
+                           showCustomAlert('使用者資料已刪除。');
                         } catch(error) {
                             console.error("Error deleting user doc:", error);
-                            alert("刪除使用者資料失敗。");
+                            showCustomAlert("刪除使用者資料失敗。");
+                        } finally {
+                            hideLoader();
                         }
                     }
                 }
@@ -1790,19 +2023,120 @@
                     const newRole = prompt("請輸入新角色 (system_admin, senior_manager, junior_manager, staff):");
                     const validRoles = ['system_admin', 'senior_manager', 'junior_manager', 'staff'];
                     if (newRole && validRoles.includes(newRole)) {
+                        showLoader();
                         try {
                             const userRef = doc(db, ...userDocPath(userId));
                             await updateDoc(userRef, { role: newRole });
-                            alert('角色已更新！');
+                            showCustomAlert('角色已更新！');
                         } catch(error) {
                             console.error("Error updating role:", error);
-                            alert('更新角色失敗。');
+                            showCustomAlert('更新角色失敗。');
+                        } finally {
+                            hideLoader();
                         }
                     } else if (newRole) {
-                        alert('無效的角色名稱！');
+                        showCustomAlert('無效的角色名稱！');
                     }
                 }
             });
+
+            // --- Custom Print Roster Logic ---
+            let pageCounter = 0;
+            
+            function addNewPrintPage(numbers = '') {
+                pageCounter++;
+                const pageDiv = document.createElement('div');
+                pageDiv.id = `print-page-row-${pageCounter}`;
+                pageDiv.className = 'flex items-center gap-2';
+                pageDiv.innerHTML = `
+                    <label for="page-input-${pageCounter}" class="block text-sm font-medium text-gray-700 whitespace-nowrap">第 ${pageCounter} 頁:</label>
+                    <input type="text" id="page-input-${pageCounter}" value="${numbers}" class="page-numbers-input mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500" placeholder="輸入住戶序號，以逗號分隔 (例如: 1,3,5)">
+                    <button data-page-id="${pageCounter}" class="remove-print-page-btn bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600 text-sm">&times;</button>
+                `;
+                customPrintPagesContainer.appendChild(pageDiv);
+
+                pageDiv.querySelector('.remove-print-page-btn').addEventListener('click', (e) => {
+                    const idToRemove = e.target.dataset.pageId;
+                    document.getElementById(`print-page-row-${idToRemove}`).remove();
+                    // Re-number labels
+                    const remainingPages = customPrintPagesContainer.querySelectorAll('.flex');
+                    remainingPages.forEach((page, index) => {
+                       page.querySelector('label').textContent = `第 ${index + 1} 頁:`;
+                    });
+                     pageCounter = remainingPages.length;
+                });
+            }
+
+            customPrintRosterBtn.addEventListener('click', () => {
+                customPrintPagesContainer.innerHTML = '';
+                pageCounter = 0;
+                addNewPrintPage(); // Add the first page by default
+                customPrintModal.classList.remove('hidden');
+            });
+
+            cancelCustomPrintBtn.addEventListener('click', () => {
+                customPrintModal.classList.add('hidden');
+            });
+            
+            addPrintPageBtn.addEventListener('click', () => addNewPrintPage());
+
+            generateCustomRosterBtn.addEventListener('click', () => {
+                const inputs = customPrintPagesContainer.querySelectorAll('.page-numbers-input');
+                const pagesOfResidents = [];
+                let allNumbers = new Set();
+                let hasError = false;
+
+                inputs.forEach((input, index) => {
+                    if (hasError) return;
+                    const numbersStr = input.value.trim();
+                    if (!numbersStr) {
+                        showCustomAlert(`第 ${index + 1} 頁是空的，請填寫序號或移除此頁。`);
+                        hasError = true;
+                        return;
+                    }
+
+                    const numbers = numbersStr.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
+                    
+                    if (numbers.length === 0 || numbers.length > 10) {
+                         showCustomAlert(`第 ${index + 1} 頁的住戶数量必須在 1 到 10 之間。`);
+                         hasError = true;
+                         return;
+                    }
+
+                    let invalidNumbers = [];
+                    let pageResidents = [];
+                    numbers.forEach(num => {
+                        if (num < 1 || num > allResidentsForSelectedEvent.length) {
+                            invalidNumbers.push(num);
+                        } else {
+                            if (allNumbers.has(num)) {
+                                showCustomAlert(`序號 ${num} 在多個頁面中重複出現。`);
+                                hasError = true;
+                            }
+                            allNumbers.add(num);
+                            pageResidents.push(allResidentsForSelectedEvent[num - 1]);
+                        }
+                    });
+
+                    if (invalidNumbers.length > 0) {
+                        showCustomAlert(`第 ${index + 1} 頁包含無效的序號: ${invalidNumbers.join(', ')}。 (有效範圍: 1-${allResidentsForSelectedEvent.length})`);
+                        hasError = true;
+                        return;
+                    }
+                    if (hasError) return;
+                    pagesOfResidents.push(pageResidents);
+                });
+
+                if (hasError) return;
+                
+                customPrintModal.classList.add('hidden');
+                showLoader();
+                
+                // We need to create pages from this custom list of residents
+                let customPrintList = [].concat.apply([], pagesOfResidents);
+                generateAndPrintRoster(customPrintList, 10, hideLoader, pagesOfResidents);
+            });
+
         }
 
         function initializeAppPublic(eventId) {
