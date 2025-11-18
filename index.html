@@ -2838,6 +2838,8 @@ const topicCells = currentTopics.map((t, tIdx) => {
                             if (!selectionByResident.has(v.residentId)) selectionByResident.set(v.residentId, new Set());
                             selectionByResident.get(v.residentId).add(v.optionIndex);
                         });
+                        const votedEligibleHouseholds = eligibleResidents.reduce((sum, r) => selectionByResident.has(r.id) ? sum + (parseInt(r.householdCount, 10) || 1) : sum, 0);
+                        const notVotedEligibleHouseholds = Math.max(eligibleCount - votedEligibleHouseholds, 0);
                         const optionStats = (Array.isArray(t.options) ? t.options : []).map((opt, optIdx) => {
                             let count = 0;
                             let ownershipSum = 0;
@@ -2872,7 +2874,7 @@ const topicCells = currentTopics.map((t, tIdx) => {
                                 <div class="flex items-center justify-between">
                                     <div class="font-semibold">${getTopicDisplayName(t, idx)}：${t.title || ''}</div>
                                     <div class="flex items-center gap-2">
-                                        <div class="text-sm text-gray-600">應投票戶數：${eligibleCount}</div>
+                                        <div class="text-sm text-gray-600">應投票戶數：${eligibleCount}｜已投票：${votedEligibleHouseholds}｜未投票：${notVotedEligibleHouseholds}</div>
                                         <button class="view-topic-votes-btn px-2 py-1 text-xs sm:text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700" data-topic-id="${t.id}" data-topic-idx="${idx}">查看投票明細</button>
                                         <button class="end-topic-btn px-2 py-1 text-xs sm:text-sm bg-red-600 text-white rounded-md hover:bg-red-700" data-topic-id="${t.id}">投票結束</button>
                                     </div>
@@ -4549,6 +4551,8 @@ const topicCells = currentTopics.map((t, tIdx) => {
                         if (!selectionByResident.has(v.residentId)) selectionByResident.set(v.residentId, new Set());
                         selectionByResident.get(v.residentId).add(v.optionIndex);
                     });
+                    const votedEligibleHouseholds = eligibleResidents.reduce((sum, r) => selectionByResident.has(r.id) ? sum + (parseInt(r.householdCount, 10) || 1) : sum, 0);
+                    const notVotedEligibleHouseholds = Math.max(eligibleCount - votedEligibleHouseholds, 0);
                     const optionStats = (Array.isArray(t.options) ? t.options : []).map((opt, optIdx) => {
                         let count = 0;
                         let ownershipSum = 0;
@@ -4588,10 +4592,10 @@ const topicCells = currentTopics.map((t, tIdx) => {
                             <div class="text-sm text-gray-700 mb-1">主旨：${t.title || ''}</div>
                             <div class="text-sm text-gray-700 mb-1">說明：${t.description || '-'}</div>
                             <div class="text-sm text-gray-700 mb-3">提案人：${proposerText}</div>
-                            <div class="text-sm text-gray-600">應投票戶數：${eligibleCount}</div>
-                            <div class="grid gap-3 mt-3" style="grid-template-columns: repeat(${columns}, minmax(0, 1fr));">
-                                ${optsHtml}
-                            </div>
+                            <div class="text-sm text-gray-600">應投票戶數：${eligibleCount}｜已投票：${votedEligibleHouseholds}｜未投票：${notVotedEligibleHouseholds}</div>
+                        <div class="grid gap-3 mt-3" style="grid-template-columns: repeat(${columns}, minmax(0, 1fr));">
+                            ${optsHtml}
+                        </div>
                         </div>
                     `;
                 } else {
@@ -4613,6 +4617,8 @@ const topicCells = currentTopics.map((t, tIdx) => {
                             if (!selectionByResident.has(v.residentId)) selectionByResident.set(v.residentId, new Set());
                             selectionByResident.get(v.residentId).add(v.optionIndex);
                         });
+                        const votedEligibleHouseholds = eligibleResidents.reduce((sum, r) => selectionByResident.has(r.id) ? sum + (parseInt(r.householdCount, 10) || 1) : sum, 0);
+                        const notVotedEligibleHouseholds = Math.max(eligibleCount - votedEligibleHouseholds, 0);
                         const optionStats = (Array.isArray(t.options) ? t.options : []).map((opt, optIdx) => {
                             let count = 0;
                             let ownershipSum = 0;
@@ -4654,7 +4660,7 @@ const topicCells = currentTopics.map((t, tIdx) => {
                                         <div class="text-sm text-gray-700">提案人：${proposerText}</div>
                                     </div>
                                     <div class="flex items-center gap-2">
-                                        <div class="text-sm text-gray-600">應投票戶數：${eligibleCount}</div>
+                                        <div class="text-sm text-gray-600">應投票戶數：${eligibleCount}｜已投票：${votedEligibleHouseholds}｜未投票：${notVotedEligibleHouseholds}</div>
                                         <button class="px-2 py-1 text-xs sm:text-sm bg-red-600 text-white rounded-md opacity-60 cursor-not-allowed" title="僅管理端可結束投票">投票結束</button>
                                     </div>
                                 </div>
