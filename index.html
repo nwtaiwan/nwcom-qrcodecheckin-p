@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>西北社區QR Code報到系統</title>
+    <title>西北社區QR Code報到與投票系統V3</title>
     <link rel="icon" type="image/png" href="https://static.wixstatic.com/media/6148f9_4ebee1eb9c114124805fddcbbc8c6e28~mv2.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -11,6 +11,7 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         body { font-family: 'Inter', 'Noto Sans TC', sans-serif; }
+        .tab-button { min-width: 120px; }
         .tab-button.active {
             border-color: #dc2626; /* red-600 */
             color: #dc2626; /* red-600 */
@@ -113,10 +114,12 @@
 
     <!-- Public View -->
     <div id="public-dashboard-view" class="hidden max-w-7xl mx-auto p-4 md:p-6">
-         <header class="text-center mb-6 pb-4 border-b">
+         <header id="public-header" class="text-center mb-4 pb-4 border-b">
              <h1 id="public-community-name-display" class="text-3xl font-bold text-red-700">載入中...</h1>
              <p id="public-event-title-display" class="text-2xl text-gray-800 mt-1"></p>
          </header>
+         <!-- Controls under header -->
+         <div id="public-controls" class="mb-4 flex items-center justify-between gap-3 flex-wrap"></div>
          <div id="public-dashboard-content" class="grid grid-cols-1 md:grid-cols-2 gap-6">
              <!-- Public dashboard cards will be injected here by JS -->
          </div>
@@ -130,7 +133,7 @@
             <div class="flex justify-center mb-4">
                 <img src="https://static.wixstatic.com/media/6148f9_4ebee1eb9c114124805fddcbbc8c6e28~mv2.png" alt="公司標誌" style="width: 80px; height: 80px;">
             </div>
-            <h1 class="text-lg sm:text-xl font-bold text-center text-gray-900">西北社區QR Code報到系統</h1>
+            <h1 class="text-lg sm:text-xl font-bold text-center text-gray-900">西北社區QR Code報到與投票系統V3</h1>
             <form id="login-form" class="mt-8">
                 <div class="mb-4">
                     <div class="flex justify-between items-center mb-1">
@@ -151,6 +154,48 @@
                 </div>
                 <button type="submit" class="w-full bg-red-600 text-white font-bold py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition duration-150 ease-in-out">登入</button>
             </form>
+            <div class="mt-4">
+                <button id="ongoing-events-btn" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">進行中活動</button>
+            </div>
+        </div>
+        
+        <!-- Ongoing Events View -->
+        <div id="ongoing-events-view" class="hidden max-w-4xl mx-auto mt-10">
+            <div class="bg-white p-8 rounded-xl shadow-lg">
+                <div class="flex justify-between items-center mb-6">
+                    <h1 class="text-2xl font-bold text-gray-900">進行中活動</h1>
+                    <button id="back-to-login-btn" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition duration-150 ease-in-out">返回登入</button>
+                </div>
+                <div id="ongoing-events-list" class="space-y-4">
+                    <!-- 當日進行中的活動按鈕將在這裡動態生成 -->
+                </div>
+                <div id="no-ongoing-events" class="hidden text-center py-8 text-gray-500">
+                    <p>今日沒有進行中的活動</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Event Dashboard View -->
+        <div id="event-dashboard-view" class="hidden max-w-4xl mx-auto mt-10">
+            <div class="bg-white p-8 rounded-xl shadow-lg">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h1 id="dashboard-event-title" class="text-2xl font-bold text-gray-900"></h1>
+                        <p id="dashboard-event-subtitle" class="text-gray-600"></p>
+                    </div>
+                    <button id="back-to-ongoing-events-btn" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition duration-150 ease-in-out">返回活動列表</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <button id="checkin-dashboard-btn" class="bg-green-600 text-white p-6 rounded-lg hover:bg-green-700 transition duration-150 ease-in-out">
+                        <h3 class="text-xl font-bold mb-2">報到狀況</h3>
+                        <p class="text-green-100">查看活動報到情況</p>
+                    </button>
+                    <button id="vote-dashboard-btn" class="bg-purple-600 text-white p-6 rounded-lg hover:bg-purple-700 transition duration-150 ease-in-out">
+                        <h3 class="text-xl font-bold mb-2">投票狀況</h3>
+                        <p class="text-purple-100">查看活動投票情況</p>
+                    </button>
+                </div>
+            </div>
         </div>
         
         <!-- Event Selection View -->
@@ -158,10 +203,11 @@
             <header class="flex flex-wrap justify-between items-center mb-6 pb-4 border-b">
                 <h1 class="text-3xl font-bold text-gray-800">會議活動列表</h1>
                 <div class="flex items-center space-x-4 mt-4 sm:mt-0">
+                    <button id="events-database-btn" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-600">活動資料庫</button>
                     <button id="create-event-btn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-md hover:bg-red-700">新增會議活動</button>
                     <button id="user-management-btn" class="bg-green-500 text-white font-bold py-2 px-4 rounded-md hover:bg-green-600">帳號管理</button>
                     <div class="text-right">
-                        <h2 class="font-bold text-gray-800">西北社區QR Code報到系統V1</h2>
+                        <h2 class="font-bold text-gray-800">西北社區QR Code報到與投票系統V3</h2>
                         <p class="text-xs text-gray-500">西北好用心  生活更安心</p>
                         <div class="mt-1">
                              <span id="user-display" class="text-sm text-gray-500"></span>
@@ -172,6 +218,28 @@
             </header>
             <div id="events-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <!-- Event cards will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <!-- Events Archive View -->
+        <div id="events-archive-view" class="hidden">
+            <header class="flex flex-wrap justify-between items-center mb-6 pb-4 border-b">
+                <h1 class="text-3xl font-bold text-gray-800">活動資料庫</h1>
+                <div class="flex items-center space-x-4 mt-4 sm:mt-0">
+                    <button id="back-to-events-from-archive-btn" class="bg-gray-500 text-white font-bold py-2 px-4 rounded-md hover:bg-gray-600">返回活動列表</button>
+                    <button id="user-management-btn-archive" class="bg-green-500 text-white font-bold py-2 px-4 rounded-md hover:bg-green-600">帳號管理</button>
+                    <div class="text-right">
+                        <h2 class="font-bold text-gray-800">西北社區QR Code報到與投票系統V3</h2>
+                        <p class="text-xs text-gray-500">西北好用心  生活更安心</p>
+                        <div class="mt-1">
+                            <span id="user-display-archive" class="text-sm text-gray-500"></span>
+                            <button id="logout-btn-archive" class="bg-gray-500 text-white px-3 py-1 rounded-md hover:bg-gray-600 text-xs font-semibold ml-2">登出</button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            <div id="events-archive-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Archived event cards will be dynamically inserted here -->
             </div>
         </div>
 
@@ -190,7 +258,7 @@
                     <p id="event-title-display" class="text-2xl text-gray-800 mt-1">QR Code 報到系統</p>
                 </div>
                 <div class="text-right">
-                    <h2 class="font-bold text-gray-800">西北社區QR Code投票系統</h2>
+                    <h2 class="font-bold text-gray-800">西北社區QR Code投票與投票系統V3</h2>
                     <p class="text-xs text-gray-500">西北好用心  生活更安心</p>
                     <div class="mt-1">
                         <span id="user-display-details" class="text-sm text-gray-500"></span>
@@ -201,10 +269,13 @@
 
             <!-- Tabs -->
             <div class="mb-6 border-b border-gray-200">
-                <nav class="flex space-x-4" aria-label="Tabs">
-                    <button id="tab-dashboard" class="tab-button active shrink-0 px-4 py-2 text-sm font-medium text-gray-500 rounded-t-lg border-b-2 border-transparent hover:text-gray-700 hover:border-gray-300">儀表板</button>
+                <nav class="flex flex-nowrap space-x-4 w-full overflow-x-auto" aria-label="Tabs">
+                    <button id="tab-dashboard" class="tab-button active shrink-0 px-4 py-2 text-sm font-medium text-gray-500 rounded-t-lg border-b-2 border-transparent hover:text-gray-700 hover:border-gray-300">報到儀表板</button>
                     <button id="tab-residents" class="tab-button shrink-0 px-4 py-2 text-sm font-medium text-gray-500 rounded-t-lg border-b-2 border-transparent hover:text-gray-700 hover:border-gray-300">住戶管理</button>
                     <button id="tab-scanner" class="tab-button shrink-0 px-4 py-2 text-sm font-medium text-gray-500 rounded-t-lg border-b-2 border-transparent hover:text-gray-700 hover:border-gray-300">掃碼報到</button>
+                     <button id="tab-votedashboard" class="tab-button shrink-0 px-4 py-2 text-sm font-medium text-gray-500 rounded-t-lg border-b-2 border-transparent hover:text-gray-700 hover:border-gray-300">投票儀表板</button>
+                    <button id="tab-topicvote" class="tab-button shrink-0 px-4 py-2 text-sm font-medium text-gray-500 rounded-t-lg border-b-2 border-transparent hover:text-gray-700 hover:border-gray-300">議題投票</button>
+                    <button id="tab-scanvote" class="tab-button shrink-0 px-4 py-2 text-sm font-medium text-gray-500 rounded-t-lg border-b-2 border-transparent hover:text-gray-700 hover:border-gray-300">掃碼投票</button>
                     <button id="tab-settings" class="tab-button shrink-0 px-4 py-2 text-sm font-medium text-gray-500 rounded-t-lg border-b-2 border-transparent hover:text-gray-700 hover:border-gray-300">系統設定</button>
                 </nav>
             </div>
@@ -296,6 +367,7 @@
                                         <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 10%;">姓名</th>
                                         <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 20%;">住址</th>
                                         <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 8%;">坪數</th>
+                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 8%;">戶數</th>
                                         <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 10%;">區分權(%)</th>
                                         <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 7%;">QR Code</th>
                                         <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 15%;">操作</th>
@@ -315,6 +387,14 @@
                              <div class="flex gap-4 mb-4">
                                  <button id="start-scan-btn" class="w-full bg-green-500 text-white font-bold py-2 px-4 rounded-md hover:bg-green-600 disabled:bg-gray-400">開始掃碼</button>
                                  <button id="stop-scan-btn" class="w-full bg-red-500 text-white font-bold py-2 px-4 rounded-md hover:bg-red-600 disabled:bg-gray-400" disabled>停止掃碼</button>
+                             </div>
+                             <div class="flex items-center gap-3 mb-4">
+                                 <label for="camera-select-scanner" class="text-sm text-gray-700">相機</label>
+                                 <select id="camera-select-scanner" class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
+                                     <option value="">自動選擇相機</option>
+                                 </select>
+                                 <input type="file" id="scan-file-input" accept="image/*" capture="environment" class="hidden">
+                                 <button id="scan-file-btn" class="bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600 text-sm font-semibold">上傳圖片掃碼</button>
                              </div>
                              <div id="reader" class="w-full aspect-square bg-gray-100 flex items-center justify-center">
                                  <p id="reader-placeholder" class="text-gray-500">請點擊 "開始掃碼"</p>
@@ -339,6 +419,90 @@
                              </ul>
                          </div>
                      </div>
+                </div>
+
+                <!-- Vote Dashboard -->
+                <div id="votedashboard-content" class="hidden">
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+                            <h3 class="text-lg font-semibold">投票儀表板</h3>
+                            <div class="flex items-center gap-2">
+                                <button id="share-vote-dashboard-btn" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-600 flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" /></svg>
+                                    分享
+                                </button>
+                            </div>
+                        </div>
+                        <!-- 移除投票總數與最近投票區塊，改為每議題統計 -->
+                        <div class="mt-6">
+                            <h4 class="text-base font-semibold mb-3">各議題投票統計</h4>
+                            <div id="topic-vote-stats" class="space-y-4"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Topic Vote -->
+                 <div id="topicvote-content" class="hidden">
+                     <div class="bg-white p-6 rounded-xl shadow-md">
+                         <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+                             <h3 class="text-lg font-semibold">議題列表</h3>
+                             <div class="flex items-center gap-2 flex-wrap">
+                                 <button id="add-topic-btn" class="bg-orange-500 text-white px-3 py-2 rounded-md hover:bg-orange-600 text-sm font-semibold">新增議題</button>
+                             </div>
+                         </div>
+                         <div class="mb-4">
+                             <h4 class="font-semibold">議題設定</h4>
+                             <div id="topics-meta-list" class="mt-2 border rounded-md overflow-x-auto"></div>
+                         </div>
+                         <div class="overflow-auto max-h-[70vh]">
+                             <table class="min-w-full divide-y divide-gray-200" style="table-layout: fixed;">
+                                 <thead class="bg-gray-50 sticky top-0" id="topics-table-head"></thead>
+                                 <tbody id="topics-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+                             </table>
+                         </div>
+                     </div>
+                 </div>
+
+                <!-- Scan Vote -->
+                <div id="scanvote-content" class="hidden">
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+                            <h3 class="text-lg font-semibold">掃碼投票</h3>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <button id="start-scanvote-btn" class="flex-1 bg-green-500 text-white font-bold py-2 px-4 rounded-md hover:bg-green-600 disabled:bg-gray-400">開始掃碼</button>
+                                    <button id="stop-scanvote-btn" class="flex-1 bg-red-500 text-white font-bold py-2 px-4 rounded-md hover:bg-red-600 disabled:bg-gray-400" disabled>停止掃碼</button>
+                                </div>
+                                <div class="flex items-center gap-3 mt-4">
+                                    <label for="camera-select-vote" class="text-sm text-gray-700">相機</label>
+                                    <select id="camera-select-vote" class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
+                                        <option value="">自動選擇相機</option>
+                                    </select>
+                                    <input type="file" id="scanvote-file-input" accept="image/*" capture="environment" class="hidden">
+                                    <button id="scanvote-file-btn" class="bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600 text-sm font-semibold">上傳圖片掃碼</button>
+                                </div>
+                                <div id="vote-reader" class="mt-4 aspect-video bg-gray-100 rounded-md flex items-center justify-center">
+                                    <p id="vote-reader-placeholder" class="text-gray-500">請點擊 "開始掃碼"</p>
+                                </div>
+                                <div id="scanvote-status" class="mt-4 text-center font-semibold p-3 rounded-md">&nbsp;</div>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-semibold mb-4">掃碼槍輸入</h4>
+                                <form id="scanvote-gun-form" class="mb-4">
+                                    <label for="scanvote-gun-input" class="sr-only">QR Code</label>
+                                    <input type="text" id="scanvote-gun-input" placeholder="將游標點擊此處後開始掃碼..." class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500">
+                                </form>
+                                <div>
+                                    <h4 class="font-semibold mb-2">最近投票：</h4>
+                                    <ul id="scanvote-recent-list" class="space-y-2 max-h-80 overflow-y-auto">
+                                        <li class="text-gray-500 text-center">掃碼紀錄將顯示於此</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Settings -->
@@ -388,6 +552,8 @@
                             <h4 class="text-lg font-semibold text-red-600 mb-2">危險區域</h4>
                             <p class="text-sm text-gray-600 mb-4">此操作將清除此活動所有住戶的報到紀錄，且無法復原。</p>
                             <button id="reset-checkin-btn" class="w-full bg-yellow-500 text-white font-bold py-2 px-4 rounded-md hover:bg-yellow-600">重設此活動的報到紀錄</button>
+                            <p class="text-sm text-gray-600 mt-4 mb-2">此操作將重設此活動的投票紀錄（可選擇單一議題或全部），且無法復原。</p>
+                            <button id="reset-votes-btn" class="w-full bg-yellow-500 text-white font-bold py-2 px-4 rounded-md hover:bg-yellow-600">重設此活動的投票紀錄</button>
                             <button id="delete-event-btn" class="mt-4 w-full bg-red-600 text-white font-bold py-2 px-4 rounded-md hover:bg-red-700">刪除整個活動</button>
                         </div>
                     </div>
@@ -515,6 +681,10 @@
                         <label for="resident-ownership" class="block text-sm font-medium text-gray-700">區分權比例 (%)</label>
                         <input type="number" id="resident-ownership" step="0.0001" min="0" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500" placeholder="例如: 0.8521">
                     </div>
+                    <div>
+                        <label for="resident-household-count" class="block text-sm font-medium text-gray-700">戶數</label>
+                        <input type="number" id="resident-household-count" step="1" min="1" value="1" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500" placeholder="預設為 1">
+                    </div>
                 </div>
                  <div class="items-center px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                      <button type="submit" id="save-resident-btn" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">儲存</button>
@@ -564,7 +734,7 @@
 
     <!-- Custom Modal -->
     <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 overflow-y-auto h-full w-full hidden z-50 flex items-center justify-center">
-        <div class="relative mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <div id="custom-modal-dialog" class="relative mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
             <div class="mt-3 text-center">
                 <h3 id="modal-title" class="text-lg leading-6 font-medium text-gray-900"></h3>
                 <div class="mt-2 px-7 py-3">
@@ -590,7 +760,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, addDoc, query, where, onSnapshot, deleteDoc, updateDoc, writeBatch, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, addDoc, query, where, onSnapshot, deleteDoc, updateDoc, writeBatch, getDocs, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Firebase Configuration ---
         const firebaseConfig = {
@@ -619,20 +789,30 @@
         let selectedEventId = null;
         let allResidentsForSelectedEvent = [];
         let unsubscribeResidents = () => {};
-        let unsubscribeSettings = () => {};
-        let unsubscribeUsers = () => {};
-        let unsubscribeSession = () => {};
-        let currentQuorumRatio = 0;
-        let currentPersonQuorumRatio = 0;
-        let currentResidentsPerPage = 10;
+let unsubscribeSettings = () => {};
+let unsubscribeUsers = () => {};
+let unsubscribeSession = () => {};
+let currentQuorumRatio = 0;
+let currentPersonQuorumRatio = 0;
+let currentResidentsPerPage = 10;
+let currentTopics = [];
+let currentVotes = [];
+let unsubscribeTopics = () => {};
 
         // --- Firestore Paths ---
         const eventsCollectionPath = () => ["events"];
-        const eventDocPath = (eventId) => ["events", eventId];
-        const residentsCollectionPath = (eventId) => ["events", eventId, "residents"];
-        const residentDocPath = (eventId, residentId) => ["events", eventId, "residents", residentId];
-        const usersCollectionPath = () => ["users"];
-        const userDocPath = (userId) => ["users", userId];
+const eventDocPath = (eventId) => ["events", eventId];
+const residentsCollectionPath = (eventId) => ["events", eventId, "residents"];
+const residentDocPath = (eventId, residentId) => ["events", eventId, "residents", residentId];
+const topicsCollectionPath = (eventId) => ["events", eventId, "topics"];
+const topicDocPath = (eventId, topicId) => ["events", eventId, "topics", topicId];
+const usersCollectionPath = () => ["users"];
+const userDocPath = (userId) => ["users", userId];
+        // --- Firestore Archive Paths ---
+        const eventsArchiveCollectionPath = () => ["events_archive"];
+        const eventArchiveDocPath = (eventId) => ["events_archive", eventId];
+        const residentsArchiveCollectionPath = (eventId) => ["events_archive", eventId, "residents"];
+        const topicsArchiveCollectionPath = (eventId) => ["events_archive", eventId, "topics"];
 
         // This listener ensures that the rest of the code runs only after the HTML document is fully loaded.
         window.addEventListener('DOMContentLoaded', () => {
@@ -651,7 +831,10 @@
         function initializeAppPrivate() {
             // --- DOM Elements ---
             const loginView = document.getElementById('login-view');
+            const ongoingEventsView = document.getElementById('ongoing-events-view');
+            const eventDashboardView = document.getElementById('event-dashboard-view');
             const eventSelectionView = document.getElementById('event-selection-view');
+            const eventsArchiveView = document.getElementById('events-archive-view');
             const eventDetailsView = document.getElementById('event-details-view');
             const userManagementView = document.getElementById('user-management-view');
             const appContainer = document.getElementById('app');
@@ -665,9 +848,13 @@
             const scanGunInput = document.getElementById('scan-gun-input');
             const loginForm = document.getElementById('login-form');
             const shareDashboardBtn = document.getElementById('share-dashboard-btn');
+            const shareVoteDashboardBtn = document.getElementById('share-vote-dashboard-btn');
             const shareModal = document.getElementById('share-modal');
             const closeShareModalBtn = document.getElementById('close-share-modal-btn');
             const shareQrCodeContainer = document.getElementById('share-qr-code');
+            const eventsDatabaseBtn = document.getElementById('events-database-btn');
+            const backToEventsFromArchiveBtn = document.getElementById('back-to-events-from-archive-btn');
+            const eventsArchiveList = document.getElementById('events-archive-list');
             const shareLink = document.getElementById('share-link');
             const shareUrlDisplay = document.getElementById('share-url-display');
             const addUserForm = document.getElementById('add-user-form');
@@ -678,6 +865,10 @@
             const modalMessage = document.getElementById('modal-message');
             const modalButtons = document.getElementById('modal-buttons');
             const loader = document.getElementById('loader');
+            const addTopicBtn = document.getElementById('add-topic-btn');
+            const topicsTableHead = document.getElementById('topics-table-head');
+            const topicsTableBody = document.getElementById('topics-table-body');
+            const topicsMetaList = document.getElementById('topics-meta-list');
             
             // Custom Print Modal Elements
             const customPrintModal = document.getElementById('custom-print-modal');
@@ -721,6 +912,78 @@
                     document.getElementById('modal-cancel-btn').onclick = () => {
                         customModal.classList.add('hidden');
                         resolve(false);
+                    };
+                });
+            }
+
+            function showCustomPrompt(message, title = '輸入') {
+                modalTitle.textContent = title;
+                modalMessage.innerHTML = `<label class="block text-sm text-gray-700 mb-2">${message}</label><input id="modal-input" type="text" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500">`;
+                modalButtons.innerHTML = `
+                    <button id="modal-ok-btn" class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-auto shadow-sm hover:bg-red-700 focus:outline-none">確定</button>
+                    <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md w-auto shadow-sm hover:bg-gray-300 focus:outline-none">取消</button>
+                `;
+                customModal.classList.remove('hidden');
+                return new Promise((resolve) => {
+                    document.getElementById('modal-ok-btn').onclick = () => {
+                        const val = document.getElementById('modal-input').value.trim();
+                        customModal.classList.add('hidden');
+                        resolve(val || null);
+                    };
+                    document.getElementById('modal-cancel-btn').onclick = () => {
+                        customModal.classList.add('hidden');
+                        resolve(null);
+                    };
+                });
+            }
+
+            async function showResetVotesDialog() {
+                const hasTopics = Array.isArray(currentTopics) && currentTopics.length > 0;
+                const topicOptions = hasTopics ? currentTopics.map((t, idx) => `<option value="${t.id}">${getTopicDisplayName(t, idx)} - ${t.title || ''}</option>`).join('') : '';
+                modalTitle.textContent = '重設投票紀錄';
+                modalMessage.innerHTML = `
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm text-gray-700 mb-1">重設範圍</label>
+                            <div class="space-y-2">
+                                <label class="flex items-center gap-2"><input type="radio" name="reset-scope" value="all" checked> 全部議題</label>
+                                <label class="flex items-center gap-2"><input type="radio" name="reset-scope" value="single" ${hasTopics ? '' : 'disabled'}> 單一議題</label>
+                            </div>
+                        </div>
+                        <div id="reset-topic-select-wrap" class="mt-2 ${hasTopics ? 'hidden' : 'opacity-50'}">
+                            <label class="block text-sm text-gray-700 mb-1">選擇議題</label>
+                            <select id="reset-topic-select" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md">${topicOptions}</select>
+                        </div>
+                        ${hasTopics ? '' : '<div class="text-sm text-gray-500">目前沒有議題可選擇</div>'}
+                    </div>
+                `;
+                modalButtons.innerHTML = `
+                    <button id="modal-ok-btn" class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-auto shadow-sm hover:bg-red-700 focus:outline-none">確定</button>
+                    <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md w-auto shadow-sm hover:bg-gray-300 focus:outline-none">取消</button>
+                `;
+                customModal.classList.remove('hidden');
+
+                const wrap = document.getElementById('reset-topic-select-wrap');
+                const radios = Array.from(document.querySelectorAll('input[name="reset-scope"]'));
+                radios.forEach(r => r.addEventListener('change', () => {
+                    const val = document.querySelector('input[name="reset-scope"]:checked').value;
+                    if (val === 'single') wrap.classList.remove('hidden'); else wrap.classList.add('hidden');
+                }));
+
+                return new Promise((resolve) => {
+                    document.getElementById('modal-ok-btn').onclick = () => {
+                        const scope = document.querySelector('input[name="reset-scope"]:checked').value;
+                        const topicId = (scope === 'single') ? (document.getElementById('reset-topic-select')?.value || null) : null;
+                        if (scope === 'single' && !topicId) {
+                            alert('請先選擇議題');
+                            return;
+                        }
+                        customModal.classList.add('hidden');
+                        resolve({ scope, topicId });
+                    };
+                    document.getElementById('modal-cancel-btn').onclick = () => {
+                        customModal.classList.add('hidden');
+                        resolve(null);
                     };
                 });
             }
@@ -794,6 +1057,49 @@
                 }
             });
 
+            // --- Ongoing Events Functionality ---
+            document.getElementById('ongoing-events-btn').addEventListener('click', async () => {
+                showLoader();
+                try {
+                    await showOngoingEventsView();
+                } catch (error) {
+                    console.error("Error loading ongoing events:", error);
+                    showCustomAlert('載入進行中活動時發生錯誤');
+                } finally {
+                    hideLoader();
+                }
+            });
+
+            document.getElementById('back-to-login-btn').addEventListener('click', () => {
+                showLoginView();
+            });
+
+            document.getElementById('back-to-ongoing-events-btn').addEventListener('click', async () => {
+                showLoader();
+                try {
+                    await showOngoingEventsView();
+                } catch (error) {
+                    console.error("Error loading ongoing events:", error);
+                    showCustomAlert('載入進行中活動時發生錯誤');
+                } finally {
+                    hideLoader();
+                }
+            });
+
+            document.getElementById('checkin-dashboard-btn').addEventListener('click', () => {
+                if (selectedEventId) {
+                    const checkinUrl = `${window.location.origin}${window.location.pathname}?view=public&event=${selectedEventId}`;
+                    window.open(checkinUrl, '_blank');
+                }
+            });
+
+            document.getElementById('vote-dashboard-btn').addEventListener('click', () => {
+                if (selectedEventId) {
+                    const voteUrl = `${window.location.origin}${window.location.pathname}?view=public&target=vote&event=${selectedEventId}`;
+                    window.open(voteUrl, '_blank');
+                }
+            });
+
             const handleLogout = async () => {
                 if (currentUser && currentUser.uid) {
                     const userRef = doc(db, 'users', currentUser.uid);
@@ -809,6 +1115,71 @@
 
             document.getElementById('logout-btn-events').addEventListener('click', handleLogout);
             document.getElementById('logout-btn-details').addEventListener('click', handleLogout);
+
+            // 動態插入「重設密碼」按鈕到兩個導覽區（事件列表、活動詳情）
+            function attachResetPasswordButton(anchorBtnId) {
+                const anchorBtn = document.getElementById(anchorBtnId);
+                if (!anchorBtn || document.getElementById(`reset-password-btn-${anchorBtnId}`)) return;
+                const resetBtn = document.createElement('button');
+                resetBtn.id = `reset-password-btn-${anchorBtnId}`;
+                resetBtn.className = 'ml-2 px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white text-sm';
+                resetBtn.textContent = '重設密碼';
+                resetBtn.addEventListener('click', async () => {
+                    try {
+                        // 以通用 modal 呈現自助變更密碼表單
+                        modalTitle.textContent = '變更密碼';
+                        modalMessage.innerHTML = `
+                            <div class="space-y-2">
+                                <input id="self-new-pwd" type="password" placeholder="新密碼（至少 6 字元）" class="w-full px-3 py-2 border rounded" />
+                                <input id="self-new-pwd2" type="password" placeholder="再次輸入新密碼" class="w-full px-3 py-2 border rounded" />
+                            </div>
+                        `;
+                        modalButtons.innerHTML = `
+                            <button id="modal-save-newpwd" class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-1/2 shadow-sm hover:bg-red-700">儲存</button>
+                            <button id="modal-cancel-newpwd" class="px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md w-1/2 shadow-sm hover:bg-gray-300">取消</button>
+                        `;
+                        customModal.classList.remove('hidden');
+
+                        document.getElementById('modal-cancel-newpwd').onclick = () => {
+                            customModal.classList.add('hidden');
+                        };
+                        document.getElementById('modal-save-newpwd').onclick = async () => {
+                            const p1 = /** @type {HTMLInputElement} */(document.getElementById('self-new-pwd')).value;
+                            const p2 = /** @type {HTMLInputElement} */(document.getElementById('self-new-pwd2')).value;
+                            if (!p1 || p1.length < 6) { showCustomAlert('密碼長度至少 6 字元'); return; }
+                            if (p1 !== p2) { showCustomAlert('兩次輸入的密碼不一致'); return; }
+                            try {
+                                showLoader();
+                                let updatePasswordFn = window.__updatePasswordFn;
+                                if (!updatePasswordFn) {
+                                    const mod = await import('https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js');
+                                    updatePasswordFn = mod.updatePassword;
+                                    window.__updatePasswordFn = updatePasswordFn;
+                                }
+                                await updatePasswordFn(auth.currentUser, p1);
+                                customModal.classList.add('hidden');
+                                showCustomAlert('密碼已更新，下次登入請使用新密碼');
+                            } catch (err) {
+                                console.error('Self password update failed:', err);
+                                const code = err?.code || '';
+                                if (code === 'auth/requires-recent-login') {
+                                    showCustomAlert('變更密碼需要重新登入，請先登出後再登入。');
+                                } else {
+                                    showCustomAlert('變更失敗，請稍後再試');
+                                }
+                            } finally {
+                                hideLoader();
+                            }
+                        };
+                    } catch (err) {
+                        console.error('Open self-change-password modal error:', err);
+                        showCustomAlert('開啟變更密碼失敗');
+                    }
+                });
+                anchorBtn.parentElement?.insertBefore(resetBtn, anchorBtn);
+            }
+            attachResetPasswordButton('logout-btn-events');
+            attachResetPasswordButton('logout-btn-details');
             
             onAuthStateChanged(auth, async user => {
                 unsubscribeResidents();
@@ -822,11 +1193,12 @@
                     const userSnap = await getDoc(userRef);
 
                     if (userSnap.exists()) {
-                        currentUser = { uid: user.uid, name: username, role: userSnap.data().role };
+                        const udata = userSnap.data();
+                        currentUser = { uid: user.uid, name: username, role: udata.role, email: user.email || udata.email || '', allowedEventIds: Array.isArray(udata.allowedEventIds) ? udata.allowedEventIds : [] };
                     } else {
                         const role = username === 'test' ? 'system_admin' : 'staff'; 
-                        await setDoc(userRef, { username: username, email: user.email, role: role });
-                        currentUser = { uid: user.uid, name: username, role: role };
+                        await setDoc(userRef, { username: username, email: user.email, role: role, allowedEventIds: [] });
+                        currentUser = { uid: user.uid, name: username, role: role, email: user.email || '', allowedEventIds: [] };
                     }
                     
                     if(currentUser.role === 'system_admin') {
@@ -847,8 +1219,8 @@
 
                     document.body.classList.remove('bg-red-600');
                     document.body.classList.add('bg-gray-50');
-                    userDisplay.textContent = `${currentUser.name} (${currentUser.role})`;
-                    userDisplayDetails.textContent = `${currentUser.name} (${currentUser.role})`;
+                    userDisplay.textContent = `${currentUser.name || ''}`;
+                    userDisplayDetails.textContent = `${currentUser.name || ''}`;
                     setupUIVisibilityByRole(currentUser.role);
                     showEventSelectionView();
                 } else {
@@ -869,6 +1241,9 @@
                 const tabDashboard = document.getElementById('tab-dashboard');
                 const tabResidents = document.getElementById('tab-residents');
                 const tabScanner = document.getElementById('tab-scanner');
+                const tabTopicVote = document.getElementById('tab-topicvote');
+                const tabScanVote = document.getElementById('tab-scanvote');
+                const tabVoteDashboard = document.getElementById('tab-votedashboard');
                 const tabSettings = document.getElementById('tab-settings');
                 
                 // Set all to a baseline (Staff)
@@ -877,9 +1252,12 @@
                 tabResidents.style.display = 'none';
                 tabSettings.style.display = 'none';
                 
-                // Dashboard and Scanner are always visible for logged-in users
+                // Baseline visible tabs for logged-in users
                 tabDashboard.style.display = 'block';
                 tabScanner.style.display = 'block';
+                tabVoteDashboard.style.display = 'block';
+                tabTopicVote.style.display = 'block';
+                tabScanVote.style.display = 'block';
                 
                 // Junior Manager
                 if (role === 'junior_manager') {
@@ -900,6 +1278,15 @@
                     tabResidents.style.display = 'block';
                     tabSettings.style.display = 'block';
                 }
+                // Staff 限定僅可使用掃碼分頁
+                if (role === 'staff') {
+                    tabDashboard.style.display = 'none';
+                    tabVoteDashboard.style.display = 'none';
+                    tabTopicVote.style.display = 'none';
+                    // 僅保留報到掃碼與投票掃碼
+                    tabScanner.style.display = 'block';
+                    tabScanVote.style.display = 'block';
+                }
             }
 
 
@@ -907,8 +1294,11 @@
             function showEventSelectionView() {
                 selectedEventId = null;
                 loginView.classList.add('hidden');
+                ongoingEventsView.classList.add('hidden');
+                eventDashboardView.classList.add('hidden');
                 eventDetailsView.classList.add('hidden');
                 userManagementView.classList.add('hidden');
+                eventsArchiveView.classList.add('hidden');
                 eventSelectionView.classList.remove('hidden');
                 stopScanner();
                 listenToEvents();
@@ -928,15 +1318,192 @@
                 eventDetailsView.classList.add('hidden');
                 userManagementView.classList.remove('hidden');
             }
+
+            function showLoginView() {
+                loginView.classList.remove('hidden');
+                ongoingEventsView.classList.add('hidden');
+                eventDashboardView.classList.add('hidden');
+                eventSelectionView.classList.add('hidden');
+                eventDetailsView.classList.add('hidden');
+                userManagementView.classList.add('hidden');
+            }
+
+            async function showOngoingEventsView() {
+                loginView.classList.add('hidden');
+                eventDashboardView.classList.add('hidden');
+                eventSelectionView.classList.add('hidden');
+                eventDetailsView.classList.add('hidden');
+                userManagementView.classList.add('hidden');
+                ongoingEventsView.classList.remove('hidden');
+                
+                await loadOngoingEvents();
+            }
+
+            function showEventDashboardView(eventId, eventData) {
+                selectedEventId = eventId;
+                ongoingEventsView.classList.add('hidden');
+                loginView.classList.add('hidden');
+                eventSelectionView.classList.add('hidden');
+                eventDetailsView.classList.add('hidden');
+                userManagementView.classList.add('hidden');
+                eventDashboardView.classList.remove('hidden');
+                
+                // 更新活動標題和副標題
+                document.getElementById('dashboard-event-title').textContent = eventData.communityName;
+                document.getElementById('dashboard-event-subtitle').textContent = `${eventData.eventName} - ${new Date(eventData.eventDate).toLocaleDateString('zh-TW')}`;
+            }
             
             userManagementBtn.addEventListener('click', showUserManagementView);
             backToEventsFromUsersBtn.addEventListener('click', showEventSelectionView);
 
 
             document.getElementById('back-to-events-btn').addEventListener('click', showEventSelectionView);
+            backToEventsFromArchiveBtn.addEventListener('click', showEventSelectionView);
+
+            // 活動資料庫按鈕：首次點擊可設定 URL，之後直接開啟
+            const EVENTS_DATABASE_URL_KEY = 'eventsDatabaseUrl';
+            function getEventsDatabaseUrl() {
+                try { return localStorage.getItem(EVENTS_DATABASE_URL_KEY) || ''; } catch (_) { return ''; }
+            }
+            function setEventsDatabaseUrl(url) {
+                try { localStorage.setItem(EVENTS_DATABASE_URL_KEY, url); } catch (_) {}
+            }
+            eventsDatabaseBtn.addEventListener('click', () => {
+                showEventsArchiveView();
+            });
 
 
             // --- Event Management ---
+            function showEventsArchiveView() {
+                selectedEventId = null;
+                ongoingEventsView.classList.add('hidden');
+                loginView.classList.add('hidden');
+                eventSelectionView.classList.add('hidden');
+                eventDetailsView.classList.add('hidden');
+                userManagementView.classList.add('hidden');
+                eventDashboardView.classList.add('hidden');
+                eventsArchiveView.classList.remove('hidden');
+                listenToArchivedEvents();
+                // 顯示使用者資訊（與活動列表一致）
+                const displayEl = document.getElementById('user-display-archive');
+                if (displayEl && currentUser && currentUser.name) {
+                    displayEl.textContent = `${currentUser.name} (${currentUser.role || ''})`;
+                }
+            }
+
+            function listenToArchivedEvents() {
+                eventsArchiveList.innerHTML = '';
+                const q = query(collection(db, ...eventsArchiveCollectionPath()));
+                onSnapshot(q, (snapshot) => {
+                    eventsArchiveList.innerHTML = '';
+                    if (snapshot.empty) {
+                        eventsArchiveList.innerHTML = `<p class="text-gray-500 md:col-span-3 text-center">活動資料庫目前沒有任何活動。</p>`;
+                        return;
+                    }
+                    const eventsData = [];
+                    snapshot.forEach(doc => {
+                        eventsData.push({ id: doc.id, ...doc.data() });
+                    });
+                    eventsData.sort((a, b) => {
+                        const dateA = a.eventDate ? new Date(a.eventDate).getTime() : 0;
+                        const dateB = b.eventDate ? new Date(b.eventDate).getTime() : 0;
+                        return dateB - dateA;
+                    });
+                    eventsData.forEach(event => {
+                        const card = document.createElement('div');
+                        const isOwner = currentUser && currentUser.uid === event.creatorId;
+                        const canRestore = currentUser && (currentUser.role === 'system_admin' || currentUser.role === 'senior_manager');
+                        card.className = `p-6 rounded-xl shadow-md transition flex flex-col justify-between ${isOwner ? 'bg-red-50' : 'bg-white'} hover:shadow-lg`;
+                        card.classList.add('archived-event-card');
+                        card.setAttribute('data-id', event.id);
+                        const formattedDateTime = event.eventDate ? event.eventDate.replace('T', ' ') : '無日期';
+                        const actionsHTML = `
+                            <div class="flex items-center space-x-2">
+                                <button data-id="${event.id}" class="view-archived-event-btn text-xs font-semibold px-2 py-1 rounded-md border ${isOwner ? 'border-red-300 text-red-700 hover:bg-red-50' : 'border-gray-300 text-gray-600 hover:bg-gray-100'}">查看</button>
+                                ${canRestore ? `<button data-id="${event.id}" class="restore-archived-event-btn text-xs font-semibold px-2 py-1 rounded-md border ${isOwner ? 'border-red-300 text-red-700 hover:bg-red-50' : 'border-gray-300 text-gray-600 hover:bg-gray-100'}">恢復到活動列表</button>` : ''}
+                            </div>
+                        `;
+                        card.innerHTML = `
+                            <div>
+                                <div class="flex justify-between items-start">
+                                    <h3 class="text-lg font-bold text-red-700">${event.communityName}</h3>
+                                    ${actionsHTML}
+                                </div>
+                                <p class="text-md text-gray-800">${event.eventName}</p>
+                            </div>
+                            <div class="mt-4 pt-4 border-t border-gray-100">
+                                <p class="text-sm text-gray-500">${formattedDateTime}</p>
+                                <p class="text-xs text-gray-400 mt-1">建立者: ${event.creatorName || 'N/A'}</p>
+                            </div>
+                        `;
+                        eventsArchiveList.appendChild(card);
+                    });
+                }, error => {
+                    console.error('Error listening to archived events:', error);
+                    showCustomAlert('無法讀取活動資料庫，請檢查您的網路連線或 Firebase 安全規則。');
+                });
+            }
+
+            async function openArchivedEventDetails(eventId) {
+                const ref = doc(db, ...eventArchiveDocPath(eventId));
+                const snap = await getDoc(ref);
+                if (!snap.exists()) {
+                    showCustomAlert('找不到活動資料。');
+                    return;
+                }
+                const data = snap.data();
+                modalTitle.textContent = '活動資料庫 - 活動詳情';
+                const dateStr = data.eventDate ? data.eventDate.replace('T', ' ') : '無日期';
+                modalMessage.innerHTML = `
+                    <div class="space-y-2 text-sm">
+                        <div><span class="font-semibold text-gray-700">社區名稱：</span><span class="text-gray-800">${data.communityName || ''}</span></div>
+                        <div><span class="font-semibold text-gray-700">活動名稱：</span><span class="text-gray-800">${data.eventName || ''}</span></div>
+                        <div><span class="font-semibold text-gray-700">活動日期：</span><span class="text-gray-800">${dateStr}</span></div>
+                        <div><span class="font-semibold text-gray-700">建立者：</span><span class="text-gray-800">${data.creatorName || 'N/A'}</span></div>
+                        <div class="text-xs text-gray-500 mt-2">歸檔者：${data.archivedByName || 'N/A'}，時間：${data.archivedAt ? '' : 'N/A'}</div>
+                    </div>
+                `;
+                modalButtons.innerHTML = `<button id="modal-ok-btn" class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-1/2 shadow-sm hover:bg-red-700">關閉</button>`;
+                customModal.classList.remove('hidden');
+                document.getElementById('modal-ok-btn').onclick = () => { customModal.classList.add('hidden'); };
+            }
+
+            // 事件委派：處理活動資料庫的查看與恢復
+            eventsArchiveList.addEventListener('click', async (e) => {
+                const restoreBtn = e.target.closest('.restore-archived-event-btn');
+                if (restoreBtn) {
+                    const eventId = restoreBtn.dataset.id;
+                    if (await showCustomConfirm('恢復此活動到會議活動列表？')) {
+                        showLoader();
+                        try {
+                            await restoreEventFromArchive(eventId);
+                            showCustomAlert('活動已恢復到列表。');
+                        } catch (err) {
+                            console.error('Error restoring archived event:', err);
+                            showCustomAlert('恢復失敗，請稍後再試。');
+                        } finally {
+                            hideLoader();
+                        }
+                    }
+                    return;
+                }
+                const viewBtn = e.target.closest('.view-archived-event-btn');
+                if (viewBtn) {
+                    const eventId = viewBtn.dataset.id;
+                    try {
+                        await openArchivedEventDetails(eventId);
+                    } catch (err) {
+                        console.error('Open archived event details error:', err);
+                        showCustomAlert('開啟活動詳情失敗');
+                    }
+                    return;
+                }
+                const card = e.target.closest('.archived-event-card');
+                if (card) {
+                    const eventId = card.getAttribute('data-id');
+                    try { await openArchivedEventDetails(eventId); } catch (_) {}
+                }
+            });
             function listenToEvents() {
                 const eventsList = document.getElementById('events-list');
                 const q = query(collection(db, ...eventsCollectionPath()));
@@ -959,6 +1526,19 @@
                         return dateB - dateA;
                     });
 
+                    // Staff 僅能看到被指派的活動
+                    if (currentUser && currentUser.role === 'staff') {
+                        const allowed = Array.isArray(currentUser.allowedEventIds) ? currentUser.allowedEventIds : [];
+                        const filtered = allowed.length > 0 ? eventsData.filter(e => allowed.includes(e.id)) : [];
+                        if (filtered.length === 0) {
+                            eventsList.innerHTML = `<p class="text-gray-500 md:col-span-3 text-center">尚未被指派可操作的活動，請洽管理員。</p>`;
+                            return;
+                        }
+                        // 覆蓋為過濾後清單
+                        eventsData.length = 0;
+                        filtered.forEach(e => eventsData.push(e));
+                    }
+
                     eventsData.forEach(event => {
                         const card = document.createElement('div');
                         const isOwner = currentUser.uid === event.creatorId;
@@ -974,6 +1554,13 @@
                                 </svg>
                             </button>
                         ` : '';
+                        const actionsHTML = showDeleteButton ? `
+                            <div class="flex items-center space-x-2">
+                                <button data-id="${event.id}" class="duplicate-event-card-btn text-xs font-semibold px-2 py-1 rounded-md border ${isOwner ? 'border-red-300 text-red-100 hover:bg-red-700 hover:text-white' : 'border-gray-300 text-gray-600 hover:bg-gray-100'}">複製活動</button>
+                                <button data-id="${event.id}" class="archive-event-card-btn text-xs font-semibold px-2 py-1 rounded-md border ${isOwner ? 'border-red-300 text-red-100 hover:bg-red-700 hover:text-white' : 'border-gray-300 text-gray-600 hover:bg-gray-100'}">移至活動資料庫</button>
+                                ${deleteButtonHTML}
+                            </div>
+                        ` : '';
 
                         const formattedDateTime = event.eventDate ? event.eventDate.replace('T', ' ') : '無日期';
 
@@ -981,7 +1568,7 @@
                             <div>
                                 <div class="flex justify-between items-start">
                                     <h3 class="text-lg font-bold ${isOwner ? 'text-white' : 'text-red-700'}">${event.communityName}</h3>
-                                    ${deleteButtonHTML}
+                                    ${actionsHTML}
                                 </div>
                                 <p class="text-md ${isOwner ? 'text-gray-200' : 'text-gray-800'}">${event.eventName}</p>
                             </div>
@@ -991,8 +1578,14 @@
                             </div>
                         `;
                         card.addEventListener('click', (e) => {
-                            if (e.target.closest('.delete-event-card-btn')) {
-                                return; 
+                            if (
+                                e.target.closest('.delete-event-card-btn') ||
+                                e.target.closest('.duplicate-event-card-btn') ||
+                                e.target.closest('.archive-event-card-btn')
+                            ) {
+                                // 點擊卡片上的操作按鈕時，不進入活動詳情；
+                                // 讓事件氣泡到父層，由父層的委派監聽器處理按鈕動作。
+                                return;
                             }
                             showEventDetailsView(event.id);
                         });
@@ -1017,6 +1610,40 @@
                         } catch (error) {
                             console.error("Error deleting event from card:", error);
                             showCustomAlert('刪除活動失敗。');
+                        } finally {
+                            hideLoader();
+                        }
+                    }
+                }
+                const duplicateButton = e.target.closest('.duplicate-event-card-btn');
+                if (duplicateButton) {
+                    e.stopPropagation();
+                    const eventId = duplicateButton.dataset.id;
+                    if (await showCustomConfirm('複製此活動與其住戶、主題資料？建立一個新的活動。')) {
+                        showLoader();
+                        try {
+                            await duplicateEventWithSubcollections(eventId);
+                            showCustomAlert('活動已成功複製。');
+                        } catch (error) {
+                            console.error('Error duplicating event:', error);
+                            showCustomAlert('複製活動失敗。');
+                        } finally {
+                            hideLoader();
+                        }
+                    }
+                }
+                const archiveButton = e.target.closest('.archive-event-card-btn');
+                if (archiveButton) {
+                    e.stopPropagation();
+                    const eventId = archiveButton.dataset.id;
+                    if (await showCustomConfirm('移動此活動至活動資料庫並從列表移除？')) {
+                        showLoader();
+                        try {
+                            await archiveEventWithSubcollections(eventId);
+                            showCustomAlert('活動已移至活動資料庫。');
+                        } catch (error) {
+                            console.error('Error archiving event:', error);
+                            showCustomAlert('移至活動資料庫失敗。');
                         } finally {
                             hideLoader();
                         }
@@ -1078,6 +1705,86 @@
                 }
             });
 
+            // --- Ongoing Events Logic ---
+            async function loadOngoingEvents() {
+                const ongoingEventsList = document.getElementById('ongoing-events-list');
+                const noOngoingEvents = document.getElementById('no-ongoing-events');
+                
+                try {
+                    const eventsRef = collection(db, ...eventsCollectionPath());
+                    const snapshot = await getDocs(eventsRef);
+                    
+                    const today = new Date();
+                    const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+                    
+                    const ongoingEvents = [];
+                    snapshot.forEach(doc => {
+                        const eventData = doc.data();
+                        const eventDate = eventData.eventDate ? eventData.eventDate.split('T')[0] : null;
+                        
+                        // 檢查是否為當日活動
+                        if (eventDate === todayStr) {
+                            ongoingEvents.push({ id: doc.id, ...eventData });
+                        }
+                    });
+                    
+                    ongoingEventsList.innerHTML = '';
+                    
+                    if (ongoingEvents.length === 0) {
+                        noOngoingEvents.classList.remove('hidden');
+                        return;
+                    }
+                    
+                    noOngoingEvents.classList.add('hidden');
+                    
+                    // 按時間排序
+                    ongoingEvents.sort((a, b) => {
+                        const timeA = a.eventDate ? new Date(a.eventDate).getTime() : 0;
+                        const timeB = b.eventDate ? new Date(b.eventDate).getTime() : 0;
+                        return timeA - timeB;
+                    });
+                    
+                    ongoingEvents.forEach(event => {
+                        const eventButton = document.createElement('button');
+                        eventButton.className = 'w-full p-6 bg-blue-50 border-2 border-blue-200 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition duration-150 ease-in-out text-left';
+                        
+                        const formattedDateTime = event.eventDate ? 
+                            new Date(event.eventDate).toLocaleString('zh-TW', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            }) : '無日期';
+                        
+                        eventButton.innerHTML = `
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="text-xl font-bold text-blue-900 mb-2">${event.communityName}</h3>
+                                    <p class="text-lg text-blue-700 mb-2">${event.eventName}</p>
+                                    <p class="text-sm text-blue-600">${formattedDateTime}</p>
+                                </div>
+                                <div class="text-blue-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </div>
+                            </div>
+                        `;
+                        
+                        eventButton.addEventListener('click', () => {
+                            showEventDashboardView(event.id, event);
+                        });
+                        
+                        ongoingEventsList.appendChild(eventButton);
+                    });
+                    
+                } catch (error) {
+                    console.error("Error loading ongoing events:", error);
+                    ongoingEventsList.innerHTML = '<p class="text-red-500 text-center">載入活動時發生錯誤</p>';
+                }
+            }
+
 
             // --- Event-Specific Logic ---
             function initializeEventData(eventId) {
@@ -1087,18 +1794,60 @@
                 unsubscribeResidents();
                 unsubscribeResidents = listenToResidents(eventId);
                 
-                switchTab('dashboard');
+                // Topics are now synced via event doc snapshot in listenToEventSettings
+                unsubscribeTopics();
+                unsubscribeTopics = () => {};
+                // Staff 預設進入報到掃碼，其餘角色維持儀表板
+                const defaultTab = (currentUser && currentUser.role === 'staff') ? 'scanner' : 'dashboard';
+                switchTab(defaultTab);
             }
 
             // --- Tabs Navigation ---
-            const tabs = { dashboard: document.getElementById('tab-dashboard'), residents: document.getElementById('tab-residents'), scanner: document.getElementById('tab-scanner'), settings: document.getElementById('tab-settings') };
-            const contents = { dashboard: document.getElementById('dashboard-content'), residents: document.getElementById('residents-content'), scanner: document.getElementById('scanner-content'), settings: document.getElementById('settings-content')};
+            const tabs = { dashboard: document.getElementById('tab-dashboard'), residents: document.getElementById('tab-residents'), scanner: document.getElementById('tab-scanner'), votedashboard: document.getElementById('tab-votedashboard'), topicvote: document.getElementById('tab-topicvote'), scanvote: document.getElementById('tab-scanvote'), settings: document.getElementById('tab-settings') };
+            const contents = { dashboard: document.getElementById('dashboard-content'), residents: document.getElementById('residents-content'), scanner: document.getElementById('scanner-content'), votedashboard: document.getElementById('votedashboard-content'), topicvote: document.getElementById('topicvote-content'), scanvote: document.getElementById('scanvote-content'), settings: document.getElementById('settings-content')};
             
             Object.keys(tabs).forEach(key => {
                 tabs[key].addEventListener('click', () => switchTab(key));
             });
 
+            // Topic vote actions
+            addTopicBtn.addEventListener('click', async () => {
+                if (!selectedEventId) return;
+                const newTopic = await showTopicForm();
+                if (!newTopic) return;
+                showLoader();
+                try {
+                    const eventRef = doc(db, ...eventDocPath(selectedEventId));
+                    const snap = await getDoc(eventRef);
+                    const prev = (snap.exists() && Array.isArray(snap.data().topics)) ? snap.data().topics : [];
+                    const topic = {
+                        id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).slice(2),
+                        title: newTopic.title,
+                        description: newTopic.description,
+                        proposer: newTopic.proposer,
+                        options: newTopic.options,
+                        multiSelect: newTopic.multiSelect,
+                        maxSelections: newTopic.maxSelections,
+                        passCountThresholdPercent: newTopic.passCountThresholdPercent ?? 50,
+                        passOwnershipThresholdPercent: newTopic.passOwnershipThresholdPercent ?? 50,
+                        createdAt: Timestamp.now(),
+                        createdBy: currentUser.uid,
+                        createdByName: currentUser.name
+                    };
+                    await updateDoc(eventRef, { topics: [...prev, topic] });
+                } catch (error) {
+                    console.error("Error adding topic:", error);
+                    showCustomAlert('新增議題失敗，請稍後再試。');
+                } finally {
+                    hideLoader();
+                }
+            });
+
             function switchTab(tabKey) {
+                // Staff 僅允許切換至掃碼分頁；其他分頁一律導回報到掃碼
+                if (currentUser && currentUser.role === 'staff' && tabKey !== 'scanner' && tabKey !== 'scanvote') {
+                    tabKey = 'scanner';
+                }
                 if (tabKey !== 'scanner') stopScanner();
                 Object.keys(tabs).forEach(key => {
                     // Only toggle if the tab exists and is visible
@@ -1114,8 +1863,628 @@
                         scanGunInput.focus();
                     }, 100); 
                 }
+                if (tabKey === 'topicvote') {
+                    renderTopicsMetaList();
+                    renderTopicsTable();
+                }
+            }
+
+            function renderTopicsTable() {
+                const fixedHead = ['狀態','序號','戶號','姓名','坪數','區分權(%)'];
+                const topicHeads = currentTopics.map((t, i) => `${getTopicDisplayName(t, i)}投票`);
+                const headHtml = `
+                    <tr>
+                        ${fixedHead.map(h => `<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${h}</th>`).join('')}
+                        ${topicHeads.map(h => `<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${h}</th>`).join('')}
+                    </tr>
+                `;
+                topicsTableHead.innerHTML = headHtml;
+
+                const residents = Array.isArray(allResidentsForSelectedEvent) ? allResidentsForSelectedEvent : [];
+                topicsTableBody.innerHTML = '';
+                residents.forEach((resident, idx) => {
+                    const tr = document.createElement('tr');
+                    tr.className = resident.isCheckedIn ? 'checked-in-row' : '';
+                    const statusBadge = resident.isCheckedIn ? '✔️' : '❌';
+                    const canVote = !!resident.isCheckedIn;
+const topicCells = currentTopics.map((t, tIdx) => {
+    const hasVoted = (Array.isArray(currentVotes) ? currentVotes : []).some(v => v.residentId === resident.id && v.topicId === t.id);
+    const voteDisabled = !canVote || hasVoted;
+    const voteBtnClass = voteDisabled ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700';
+    const editBtnClass = canVote ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed';
+    return `
+    <td class="px-4 py-2 text-center">
+        <div class="flex flex-col items-center gap-1">
+            <button class="topic-vote-btn ${voteBtnClass} text-white text-xs px-2 py-1 rounded" ${voteDisabled ? 'disabled' : ''} data-resident-index="${idx}" data-topic-index="${tIdx}">投票</button>
+            <button class="topic-edit-btn ${editBtnClass} text-white text-xs px-2 py-1 rounded" ${canVote ? '' : 'disabled'} data-resident-index="${idx}" data-topic-index="${tIdx}">編輯</button>
+            <button class="topic-reset-btn bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded" data-resident-index="${idx}" data-topic-index="${tIdx}">重設</button>
+        </div>
+    </td>`;
+}).join('');
+                    tr.innerHTML = `
+                        <td class="px-2 py-2 whitespace-nowrap text-center">${statusBadge}</td>
+                        <td class="px-2 py-2 whitespace-nowrap text-center">${idx + 1}</td>
+                        <td class="px-2 py-2 whitespace-nowrap truncate">${resident.unit || ''}</td>
+                        <td class="px-2 py-2 whitespace-nowrap truncate">${resident.name || ''}</td>
+                        <td class="px-2 py-2 whitespace-nowrap">${resident.area || 0}</td>
+                        <td class="px-2 py-2 whitespace-nowrap">${resident.ownership || 0}%</td>
+                        ${topicCells}
+                    `;
+                    topicsTableBody.appendChild(tr);
+                    currentTopics.forEach((t, tIdx) => {
+                        const voteBtn = tr.querySelector(`.topic-vote-btn[data-topic-index="${tIdx}"]`);
+                        if (voteBtn) {
+                            voteBtn.addEventListener('click', () => {
+                                showTopicVoteModal(resident, t, tIdx, idx);
+                            });
+                        }
+                        const editBtn = tr.querySelector(`.topic-edit-btn[data-topic-index="${tIdx}"]`);
+                        if (editBtn) {
+                            editBtn.addEventListener('click', () => {
+                                openResidentTopicVoteEditModal(resident, t, tIdx, idx);
+                            });
+                        }
+                        const resetBtn = tr.querySelector(`.topic-reset-btn[data-topic-index="${tIdx}"]`);
+                        if (resetBtn) {
+                            resetBtn.addEventListener('click', () => {
+                                resetResidentTopicVoteForResident(resident, t, tIdx, idx);
+                            });
+                        }
+                    });
+                });
+
+                if (residents.length === 0) {
+                    topicsTableBody.innerHTML = `<tr><td colspan="${fixedHead.length + topicHeads.length}" class="p-4 text-center text-gray-500">請先在「住戶管理」新增住戶</td></tr>`;
+                }
+
+                if (currentTopics.length === 0) {
+                    topicsTableHead.innerHTML = `
+                        <tr>
+                            ${fixedHead.map(h => `<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${h}</th>`).join('')}
+                        </tr>
+                    `;
+                }
+            }
+
+            function renderTopicsMetaList() {
+                const container = document.getElementById('topics-meta-list');
+                if (!container) return;
+                if (!Array.isArray(currentTopics) || currentTopics.length === 0) {
+                    container.innerHTML = '<div class="text-gray-500 text-sm p-3">尚未新增議題</div>';
+                    return;
+                }
+                const heads = ['議題名稱','主題','說明','提案人','投票項目','複選(票數)','操作'];
+                const canEditTopic = !!currentUser?.uid && (currentUser?.role === 'system_admin' || currentUser?.role === 'senior_manager');
+                let html = '<table class="min-w-[960px] md:min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>' +
+                    heads.map(h => `<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${h}</th>`).join('') +
+                    '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+                currentTopics.forEach((t, idx) => {
+                    const proposerText = t?.proposer?.type === 'resident' ? `住戶(${t?.proposer?.unit || ''})` : '管委會';
+                    const optionsText = Array.isArray(t.options) ? t.options.map(o => o.label).join('、') : '';
+                    const multiText = t.multiSelect ? `是(${t.maxSelections || 1})` : '否(1)';
+                    const displayName = getTopicDisplayName(t, idx);
+                    html += `
+                        <tr>
+                            <td class="px-2 py-2 whitespace-nowrap truncate">${displayName}</td>
+                            <td class="px-2 py-2 whitespace-nowrap truncate">${t.title || ''}</td>
+                            <td class="px-2 py-2 whitespace-nowrap truncate">${t.description || ''}</td>
+                            <td class="px-2 py-2 whitespace-nowrap">${proposerText}</td>
+                            <td class="px-2 py-2 whitespace-nowrap truncate">${optionsText}</td>
+                            <td class="px-2 py-2 whitespace-nowrap">${multiText}</td>
+                            <td class="px-2 py-2 whitespace-nowrap flex items-center gap-2">
+                                ${canEditTopic ? `<button class="topic-settings-edit-btn bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded" data-topic-index="${idx}">編輯設定</button>` : `<span class="text-gray-400 text-xs">-</span>`}
+                                ${canEditTopic ? `<button class="topic-delete-btn bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded" data-topic-index="${idx}">刪除</button>` : ''}
+                            </td>
+                        </tr>
+                    `;
+                });
+                html += '</tbody></table>';
+                container.innerHTML = html;
+                // 綁定設定編輯按鈕
+                Array.from(container.querySelectorAll('.topic-settings-edit-btn')).forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const tIdx = parseInt(e.currentTarget.getAttribute('data-topic-index'), 10);
+                        const topic = currentTopics[tIdx];
+                        if (topic) openTopicSettingsEditModal(topic, tIdx);
+                    });
+                });
+                // 綁定刪除按鈕
+                Array.from(container.querySelectorAll('.topic-delete-btn')).forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const tIdx = parseInt(e.currentTarget.getAttribute('data-topic-index'), 10);
+                        const topic = currentTopics[tIdx];
+                        if (!topic) return;
+                        const ok = window.confirm('確定要刪除此議題？刪除後不可復原');
+                        if (!ok) return;
+                        await deleteTopicById(topic.id);
+                    });
+                });
+            }
+
+            // 編輯住戶針對單一議題的投票選擇
+            async function openResidentTopicVoteEditModal(resident, topic, topicIdx, residentIdx) {
+                if (!resident?.isCheckedIn) {
+                    showCustomAlert('尚未報到不可編輯投票', '限制');
+                    return;
+                }
+                const existing = Array.isArray(currentVotes) ? currentVotes.filter(v => v.residentId === resident.id && v.topicId === topic.id) : [];
+                const preselected = existing.map(v => v.optionIndex);
+                const optionsHtml = (Array.isArray(topic.options) ? topic.options : []).map((opt, idx) => {
+                    const checked = preselected.includes(idx) ? 'checked' : '';
+                    const inputType = topic.multiSelect ? 'checkbox' : 'radio';
+                    const nameAttr = topic.multiSelect ? `name="edit-opt-${resident.id}-${topic.id}-${idx}"` : `name="edit-opt-group"`;
+                    return `<label class="flex items-center gap-2"><input type="${inputType}" ${nameAttr} value="${idx}" ${checked}> ${opt.label || `選項${idx+1}`}</label>`;
+                }).join('');
+
+                const titleText = `${getTopicDisplayName(topic, topicIdx)} 投票編輯 - ${resident.unit || ''} ${resident.name || ''}`;
+                modalTitle.textContent = titleText;
+                modalMessage.innerHTML = `
+                    <div class="space-y-3">
+                        <div class="text-sm text-gray-600">${topic.description || ''}</div>
+                        <div class="space-y-2" id="edit-options-wrap">${optionsHtml || '<div class="text-sm text-gray-500">此議題尚無選項</div>'}</div>
+                        ${topic.multiSelect ? `<div class="text-xs text-gray-500">最多可選 ${topic.maxSelections || 1} 項</div>` : ''}
+                    </div>
+                `;
+                modalButtons.innerHTML = `
+                    <button id="modal-save-btn" class="px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md w-auto shadow-sm hover:bg-blue-700 focus:outline-none">儲存</button>
+                    <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md w-auto shadow-sm hover:bg-gray-300 focus:outline-none">取消</button>
+                `;
+                customModal.classList.remove('hidden');
+
+                document.getElementById('modal-save-btn').onclick = async () => {
+                    const wrap = document.getElementById('edit-options-wrap');
+                    if (!wrap) return;
+                    let selectedIndices = [];
+                    if (topic.multiSelect) {
+                        selectedIndices = Array.from(wrap.querySelectorAll('input[type="checkbox"]:checked')).map(i => parseInt(i.value, 10));
+                        const max = topic.maxSelections || 1;
+                        if (selectedIndices.length === 0) { showCustomAlert('請至少選擇一項'); return; }
+                        if (selectedIndices.length > max) { showCustomAlert(`超過可選數量（最多 ${max} 項）`); return; }
+                    } else {
+                        const checked = wrap.querySelector('input[type="radio"]:checked');
+                        if (!checked) { showCustomAlert('請選擇一項'); return; }
+                        selectedIndices = [parseInt(checked.value, 10)];
+                    }
+                    customModal.classList.add('hidden');
+                    await persistResidentTopicVotes(resident, topic, topicIdx, residentIdx, selectedIndices);
+                };
+                document.getElementById('modal-cancel-btn').onclick = () => {
+                    customModal.classList.add('hidden');
+                };
+            }
+
+            async function persistResidentTopicVotes(resident, topic, topicIdx, residentIdx, selectedOptionIndices) {
+                showLoader();
+                try {
+                    const eventRef = doc(db, ...eventDocPath(selectedEventId));
+                    const snap = await getDoc(eventRef);
+                    const prev = (snap.exists() && Array.isArray(snap.data().votes)) ? snap.data().votes : [];
+                    // 移除該住戶在該議題的既有投票
+                    const filtered = prev.filter(v => !(v.residentId === resident.id && v.topicId === topic.id));
+                    const topicSerial = topicIdx + 1;
+                    const newVotes = selectedOptionIndices.map(optIdx => {
+                        const label = (topic.options && topic.options[optIdx] && topic.options[optIdx].label) ? topic.options[optIdx].label : `選項${optIdx + 1}`;
+                        const code = buildVoteCode(residentIdx + 1, topicSerial, optIdx);
+                        return {
+                            residentId: resident.id,
+                            unit: resident.unit,
+                            name: resident.name,
+                            topicId: topic.id,
+                            topicSerial,
+                            optionIndex: optIdx,
+                            optionLabel: label,
+                            code,
+                            createdAt: Timestamp.now(),
+                            source: '管理編輯',
+                            createdBy: currentUser.name
+                        };
+                    });
+                    await updateDoc(eventRef, { votes: [...filtered, ...newVotes] });
+                    // 更新本地快取
+                    currentVotes = [...filtered, ...newVotes];
+                    updateDashboardCalculations();
+                    showCustomAlert('已更新該住戶的投票選擇', '完成');
+                } catch (err) {
+                    console.error('Edit votes persist error:', err);
+                    showCustomAlert('儲存失敗，請稍後再試', '錯誤');
+                } finally {
+                    hideLoader();
+                }
+            }
+
+            async function resetResidentTopicVoteForResident(resident, topic, topicIdx, residentIdx) {
+                const ok = await showCustomConfirm(`確定重設 ${resident.unit || ''} ${resident.name || ''} 在「${getTopicDisplayName(topic, topicIdx)}」的投票？`, '重設確認');
+                if (!ok) return;
+                showLoader();
+                try {
+                    const eventRef = doc(db, ...eventDocPath(selectedEventId));
+                    const snap = await getDoc(eventRef);
+                    const prev = (snap.exists() && Array.isArray(snap.data().votes)) ? snap.data().votes : [];
+                    const filtered = prev.filter(v => !(v.residentId === resident.id && v.topicId === topic.id));
+                    await updateDoc(eventRef, { votes: filtered });
+                    currentVotes = filtered;
+                    updateDashboardCalculations();
+                    showCustomAlert('已重設該住戶在此議題的投票', '完成');
+                } catch (err) {
+                    console.error('Reset votes error:', err);
+                    showCustomAlert('重設失敗，請稍後再試', '錯誤');
+                } finally {
+                    hideLoader();
+                }
+            }
+
+            // 議題設定編輯：可調整標題、說明、前綴/編號文字、選項增刪、複選上限
+            async function openTopicSettingsEditModal(topic, topicIdx) {
+                const options = Array.isArray(topic.options) ? topic.options : [];
+                const optRows = options.map((opt, idx) => `
+                    <div class="flex items-center gap-2 mb-2">
+                        <input type="text" class="flex-1 px-2 py-1 border border-gray-300 rounded" value="${opt.label || ''}" data-opt-index="${idx}">
+                        <button class="remove-opt-btn bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded" data-opt-index="${idx}">刪除</button>
+                    </div>
+                `).join('');
+                modalTitle.textContent = `編輯設定 - ${getTopicDisplayName(topic, topicIdx)}`;
+                modalMessage.innerHTML = `
+                    <div class="space-y-3">
+                        <label class="block text-sm">議題名稱</label>
+                        <input id="edit-topic-title" type="text" class="w-full px-3 py-2 border border-gray-300 rounded" value="${topic.title || ''}">
+                        <label class="block text-sm">說明</label>
+                        <textarea id="edit-topic-desc" class="w-full px-3 py-2 border border-gray-300 rounded">${topic.description || ''}</textarea>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm">名稱前綴</label>
+                                <input id="edit-topic-prefix" type="text" class="w-full px-3 py-2 border border-gray-300 rounded" value="${topic.labelPrefix || '議題'}">
+                            </div>
+                            <div>
+                                <label class="block text-sm">編號文字</label>
+                                <input id="edit-topic-serial" type="text" class="w-full px-3 py-2 border border-gray-300 rounded" value="${topic.serialText || (topicIdx + 1)}">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm">投票項目</label>
+                            <div id="edit-options-list">${optRows || '<div class="text-sm text-gray-500">尚無項目</div>'}</div>
+                            <button id="add-opt-btn" class="mt-2 bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded">新增項目</button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="flex items-center gap-2"><input type="checkbox" id="edit-multi" ${topic.multiSelect ? 'checked' : ''}> 複選</label>
+                            <input id="edit-max" type="number" min="1" class="w-24 px-2 py-1 border border-gray-300 rounded" value="${topic.maxSelections || 1}" ${topic.multiSelect ? '' : 'disabled'}>
+                        </div>
+                    </div>
+                `;
+                modalButtons.innerHTML = `
+                    <button id="modal-save-btn" class="px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md w-auto shadow-sm hover:bg-blue-700 focus:outline-none">儲存</button>
+                    <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md w-auto shadow-sm hover:bg-gray-300 focus:outline-none">取消</button>
+                `;
+                customModal.classList.remove('hidden');
+
+                // 互動邏輯
+                const listEl = document.getElementById('edit-options-list');
+                document.getElementById('add-opt-btn').onclick = () => {
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center gap-2 mb-2';
+                    const idx = listEl.querySelectorAll('input[type="text"]').length;
+                    row.innerHTML = `<input type="text" class="flex-1 px-2 py-1 border border-gray-300 rounded" value="" data-opt-index="${idx}"><button class="remove-opt-btn bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded" data-opt-index="${idx}">刪除</button>`;
+                    listEl.appendChild(row);
+                    bindRemoveHandlers();
+                };
+                function bindRemoveHandlers() {
+                    Array.from(listEl.querySelectorAll('.remove-opt-btn')).forEach(btn => {
+                        btn.onclick = () => {
+                            const parent = btn.parentElement;
+                            parent?.remove();
+                        };
+                    });
+                }
+                bindRemoveHandlers();
+                const multiEl = document.getElementById('edit-multi');
+                const maxEl = document.getElementById('edit-max');
+                multiEl.onchange = () => { maxEl.disabled = !multiEl.checked; };
+
+                document.getElementById('modal-save-btn').onclick = async () => {
+                    // 先做權限檢查，避免觸發 Firestore 規則拒絕
+                    if (!currentUser?.uid) {
+                        showCustomAlert('未登入或登入狀態已失效，請重新登入。', '權限不足');
+                        return;
+                    }
+                    const canEdit = currentUser.role === 'system_admin' || currentUser.role === 'senior_manager';
+                    if (!canEdit) {
+                        showCustomAlert('無權限更新議題設定，請確認登入帳號或角色。', '權限不足');
+                        return;
+                    }
+                    const title = document.getElementById('edit-topic-title').value.trim();
+                    const desc = document.getElementById('edit-topic-desc').value.trim();
+                    const prefix = document.getElementById('edit-topic-prefix').value.trim() || '議題';
+                    const serialText = document.getElementById('edit-topic-serial').value.trim() || String(topicIdx + 1);
+                    const optLabels = Array.from(listEl.querySelectorAll('input[type="text"]')).map(i => i.value.trim()).filter(s => s.length > 0);
+                    const multi = multiEl.checked;
+                    const maxSel = parseInt(maxEl.value, 10) || 1;
+                    if (optLabels.length === 0) { showCustomAlert('請至少保留一個投票項目'); return; }
+
+                    const eventId = selectedEventId;
+                    const eventRef = doc(db, ...eventDocPath(eventId));
+                    const payload = {
+                        title,
+                        description: desc,
+                        labelPrefix: prefix,
+                        serialText,
+                        options: optLabels.map(l => ({ label: l })),
+                        multiSelect: multi,
+                        maxSelections: multi ? maxSel : 1
+                    };
+                    try {
+                        const snap = await getDoc(eventRef);
+                        if (!snap.exists()) {
+                            showCustomAlert('找不到活動資料，請重新載入。', '錯誤');
+                            return;
+                        }
+                        const prevTopics = Array.isArray(snap.data().topics) ? snap.data().topics : [];
+                        const newTopics = prevTopics.map(t => {
+                            if (t.id === topic.id) {
+                                return { ...t, ...payload };
+                            }
+                            return t;
+                        });
+                        await updateDoc(eventRef, { topics: newTopics });
+                        customModal.classList.add('hidden');
+                        showCustomAlert('議題設定已更新', '完成');
+                    } catch (err) {
+                        console.error('Update topic settings error:', err);
+                        if (err?.code === 'permission-denied') {
+                            showCustomAlert('無權限更新議題設定，請確認登入帳號或角色。', '權限不足');
+                        } else {
+                            showCustomAlert('更新失敗，請稍後重試', '錯誤');
+                        }
+                    }
+                };
+                document.getElementById('modal-cancel-btn').onclick = () => {
+                    customModal.classList.add('hidden');
+                };
+            }
+
+            async function showTopicForm(initial = null) {
+                const defaults = {
+                    title: '',
+                    description: '',
+                    proposer: { type: 'committee', unit: '' },
+                    options: [{label:'同意'},{label:'不同意'},{label:'棄票'}],
+                    multiSelect: false,
+                    maxSelections: 1,
+                    passCountThresholdPercent: 50,
+                    passOwnershipThresholdPercent: 50
+                };
+                const data = Object.assign({}, defaults, initial || {});
+
+                const units = Array.from(new Set((allResidentsForSelectedEvent || []).map(r => r.unit).filter(u => !!u)));
+                const unitOptionsHtml = units.map(u => `<option value="${u}">${u}</option>`).join('');
+
+                modalTitle.textContent = initial ? '編輯議題' : '新增議題';
+                modalMessage.innerHTML = `
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm text-gray-700 mb-1">主題</label>
+                            <input id="topic-title" type="text" value="${data.title}" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500" />
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-700 mb-1">說明</label>
+                            <textarea id="topic-desc" rows="3" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500">${data.description || ''}</textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-700 mb-1">提案人</label>
+                            <div class="flex items-center gap-4">
+                                <label class="flex items-center gap-2"><input type="radio" name="topic-proposer-type" value="committee" ${data.proposer?.type !== 'resident' ? 'checked' : ''}/> 管委會</label>
+                                <label class="flex items-center gap-2"><input type="radio" name="topic-proposer-type" value="resident" ${data.proposer?.type === 'resident' ? 'checked' : ''}/> 住戶</label>
+                                <select id="topic-proposer-unit" class="px-2 py-1 border rounded-md ${data.proposer?.type === 'resident' ? '' : 'hidden'}">
+                                    <option value="">請選擇戶號</option>
+                                    ${unitOptionsHtml}
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-700 mb-1">投票項目</label>
+                            <div id="topic-options-container" class="flex flex-wrap gap-2">
+                            </div>
+                            <div class="flex items-center gap-2 mt-2">
+                                <input id="new-option-input" type="text" placeholder="輸入選項..." class="px-2 py-1 border rounded-md flex-1" />
+                                <button id="add-option-btn" type="button" class="px-3 py-1 bg-gray-200 rounded-md hover:bg-gray-300 text-sm">新增選項</button>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <label class="flex items-center gap-2"><input id="topic-multi" type="checkbox" ${data.multiSelect ? 'checked' : ''}/> 複選功能(設定票數)</label>
+                            <input id="topic-max" type="number" min="1" value="${data.maxSelections || 1}" class="px-2 py-1 border rounded-md w-24 ${data.multiSelect ? '' : 'opacity-50'}" ${data.multiSelect ? '' : 'disabled'} />
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm text-gray-700 mb-1">票數門檻(%)</label>
+                                <input id="topic-pass-count-threshold" type="number" min="0" max="100" step="1" value="${data.passCountThresholdPercent}" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-700 mb-1">區分權門檻(%)</label>
+                                <input id="topic-pass-ownership-threshold" type="number" min="0" max="100" step="0.01" value="${data.passOwnershipThresholdPercent}" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" />
+                            </div>
+                        </div>
+                    </div>
+                `;
+                modalButtons.innerHTML = `
+                    <button id="modal-ok-btn" class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-auto shadow-sm hover:bg-red-700 focus:outline-none">確定</button>
+                    <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md w-auto shadow-sm hover:bg-gray-300 focus:outline-none">取消</button>
+                `;
+                customModal.classList.remove('hidden');
+
+                const options = Array.isArray(data.options) ? data.options.map(o => ({label: o.label})) : [];
+                const optionsContainer = document.getElementById('topic-options-container');
+                function renderOptionsChips() {
+                    if (!optionsContainer) return;
+                    if (options.length === 0) {
+                        optionsContainer.innerHTML = '<span class="text-gray-500 text-sm">尚無選項</span>';
+                        return;
+                    }
+                    optionsContainer.innerHTML = options.map((o, idx) => `
+                        <span class="inline-flex items-center gap-2 bg-gray-100 text-gray-800 text-sm px-2 py-1 rounded">
+                            ${o.label}
+                            <button data-idx="${idx}" class="remove-option text-red-600">×</button>
+                        </span>
+                    `).join('');
+                    Array.from(optionsContainer.querySelectorAll('.remove-option')).forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const i = parseInt(btn.getAttribute('data-idx'), 10);
+                            options.splice(i, 1);
+                            renderOptionsChips();
+                        });
+                    });
+                }
+                renderOptionsChips();
+
+                const proposerRadios = Array.from(document.querySelectorAll('input[name="topic-proposer-type"]'));
+                const proposerUnitSelect = document.getElementById('topic-proposer-unit');
+                proposerUnitSelect.value = data.proposer?.unit || '';
+                proposerRadios.forEach(r => r.addEventListener('change', () => {
+                    const isResident = r.value === 'resident' && r.checked;
+                    if (isResident) {
+                        proposerUnitSelect.classList.remove('hidden');
+                    } else {
+                        proposerUnitSelect.classList.add('hidden');
+                        proposerUnitSelect.value = '';
+                    }
+                }));
+
+                const multiCheckbox = document.getElementById('topic-multi');
+                const maxInput = document.getElementById('topic-max');
+                multiCheckbox.addEventListener('change', () => {
+                    if (multiCheckbox.checked) {
+                        maxInput.removeAttribute('disabled');
+                        maxInput.classList.remove('opacity-50');
+                        if (!maxInput.value || parseInt(maxInput.value, 10) < 1) maxInput.value = 2;
+                    } else {
+                        maxInput.setAttribute('disabled', 'true');
+                        maxInput.classList.add('opacity-50');
+                        maxInput.value = 1;
+                    }
+                });
+
+                const addOptionBtn = document.getElementById('add-option-btn');
+                const newOptionInput = document.getElementById('new-option-input');
+                addOptionBtn.addEventListener('click', () => {
+                    const label = (newOptionInput.value || '').trim();
+                    if (!label) return;
+                    if (options.some(o => o.label === label)) return;
+                    options.push({label});
+                    newOptionInput.value = '';
+                    renderOptionsChips();
+                });
+
+                return new Promise((resolve) => {
+                    document.getElementById('modal-ok-btn').onclick = () => {
+                        const title = document.getElementById('topic-title').value.trim();
+                        const description = document.getElementById('topic-desc').value.trim();
+                        const type = (document.querySelector('input[name="topic-proposer-type"]:checked')?.value) || 'committee';
+                        const unit = proposerUnitSelect.classList.contains('hidden') ? '' : (proposerUnitSelect.value || '');
+                        const multiSelect = multiCheckbox.checked;
+                        const maxSelections = parseInt(maxInput.value, 10) || 1;
+                        const passCountThresholdPercent = Math.max(0, Math.min(100, parseFloat(document.getElementById('topic-pass-count-threshold').value) || 50));
+                        const passOwnershipThresholdPercent = Math.max(0, Math.min(100, parseFloat(document.getElementById('topic-pass-ownership-threshold').value) || 50));
+                        if (!title) {
+                            // 基本驗證：主題必填
+                            alert('請輸入主題');
+                            return;
+                        }
+                        customModal.classList.add('hidden');
+                        resolve({
+                            title,
+                            description,
+                            proposer: { type, unit },
+                            options,
+                            multiSelect,
+                            maxSelections,
+                            passCountThresholdPercent,
+                            passOwnershipThresholdPercent
+                        });
+                    };
+                    document.getElementById('modal-cancel-btn').onclick = () => {
+                        customModal.classList.add('hidden');
+                        resolve(null);
+                    };
+                });
             }
             
+            function padNumber(num, size) { return String(num).padStart(size, '0'); }
+            function getOptionCode(idx) {
+                const map = ['T','F','N','A','B','C','D','E','G','H'];
+                if (idx < map.length) return map[idx];
+                return String.fromCharCode('I'.charCodeAt(0) + (idx - map.length));
+            }
+            function buildVoteCode(residentSerial, topicSerial, optionIndex) {
+                return `A${padNumber(residentSerial,3)}M${padNumber(topicSerial,2)}${getOptionCode(optionIndex)}`;
+            }
+            function getOptionIndexFromCode(letter) {
+                const map = ['T','F','N','A','B','C','D','E','G','H'];
+                const idx = map.indexOf(letter);
+                if (idx >= 0) return idx;
+                const code = letter.charCodeAt(0);
+                const Icode = 'I'.charCodeAt(0);
+                if (code >= Icode) return (code - Icode) + map.length;
+                return -1;
+            }
+
+            // 顯示用的議題名稱（可自訂前綴與編號文字）
+            function getTopicDisplayName(topic, idx) {
+                const prefix = topic?.labelPrefix || '議題';
+                const serial = topic?.serialText || (idx + 1);
+                return `${prefix}${serial}`;
+            }
+
+            function showTopicVoteModal(resident, topic, topicIdx, residentIdx) {
+    // 僅限已報到住戶可投票
+    if (!resident?.isCheckedIn) {
+        showCustomAlert('尚未報到：此住戶不可投票', '禁止投票');
+        try { speak('尚未報到不可投票'); } catch (_) {}
+        return;
+    }
+                const proposerText = topic?.proposer?.type === 'resident' ? `住戶(${topic?.proposer?.unit || ''})` : '管委會';
+                const options = Array.isArray(topic.options) ? topic.options : [];
+
+                modalTitle.textContent = getTopicDisplayName(topic, topicIdx);
+                modalMessage.innerHTML = `
+                    <div class="space-y-3">
+                        <div><span class="font-semibold">主題：</span>${topic.title || ''}</div>
+                        <div><span class="font-semibold">說明：</span>${topic.description || '-'}</div>
+                        <div><span class="font-semibold">提案人：</span>${proposerText}</div>
+                        <div><span class="font-semibold">投票項目：</span></div>
+                        <div id="vote-options-qrs" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
+                    </div>
+                `;
+                modalButtons.innerHTML = `
+                    <button id="modal-close-btn" class="px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md w-auto shadow-sm hover:bg-gray-300 focus:outline-none">關閉</button>
+                `;
+                customModal.classList.remove('hidden');
+                document.getElementById('modal-close-btn').onclick = () => { customModal.classList.add('hidden'); };
+
+                const container = document.getElementById('vote-options-qrs');
+                options.forEach((opt, optIdx) => {
+                    const code = buildVoteCode(residentIdx + 1, topicIdx + 1, optIdx);
+                    const wrap = document.createElement('div');
+                    wrap.className = 'flex flex-col items-center';
+                    const qrId = `voteqr-${residentIdx}-${topicIdx}-${optIdx}`;
+                    const btnId = `manualvote-${residentIdx}-${topicIdx}-${optIdx}`;
+                    wrap.innerHTML = `
+                        <div id="${qrId}"></div>
+                        <div class="text-sm mt-2 text-gray-700">代碼：${code}</div>
+                        <div class="text-lg mt-1 font-semibold">${opt.label}</div>
+                        <button id="${btnId}" class="manual-vote-btn mt-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md shadow-sm hover:bg-blue-700 focus:outline-none">手動投票</button>
+                    `;
+                    container.appendChild(wrap);
+                    const el = document.getElementById(qrId);
+                    if (el) new QRCode(el, { text: code, width: 96, height: 96 });
+                    const btn = document.getElementById(btnId);
+                    if (btn) btn.onclick = () => {
+                        const allBtns = container.querySelectorAll('.manual-vote-btn');
+                        allBtns.forEach(b => {
+                            b.disabled = true;
+                            b.className = 'manual-vote-btn mt-2 px-3 py-1.5 bg-gray-400 text-white text-sm rounded-md shadow-sm cursor-not-allowed';
+                        });
+                        handleVoteScan(code, '手動投票');
+                    };
+                });
+            }
+
             // --- Settings Management (Event Specific) ---
             const settingsForm = document.getElementById('settings-form');
             
@@ -1141,9 +2510,60 @@
 
                         document.getElementById('community-name-display').textContent = data.communityName || '請先設定社區名稱';
                         document.getElementById('event-title-display').textContent = data.eventName || 'QR Code 報到系統';
+                        
+                        // Sync topics from event doc (fallback when subcollection access is restricted)
+                        currentTopics = Array.isArray(data.topics) ? data.topics.slice() : [];
+                        currentTopics.sort((a, b) => {
+                            const ta = a?.createdAt?.toMillis ? a.createdAt.toMillis() : (a?.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0);
+                            const tb = b?.createdAt?.toMillis ? b.createdAt.toMillis() : (b?.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0);
+                            return ta - tb;
+                        });
+
+                        // Sync votes from event doc for dashboard and scan vote
+                        currentVotes = Array.isArray(data.votes) ? data.votes.slice() : [];
+
+                        renderTopicsMetaList();
+                        renderTopicsTable();
+                        
                         updateDashboardCalculations();
                     }
                 });
+            }
+
+            async function deleteTopicById(topicId) {
+                // 權限檢查
+                if (!currentUser?.uid) {
+                    showCustomAlert('未登入或登入狀態已失效，請重新登入。', '權限不足');
+                    return;
+                }
+                const canEdit = currentUser.role === 'system_admin' || currentUser.role === 'senior_manager';
+                if (!canEdit) {
+                    showCustomAlert('無權限更新議題設定，請確認登入帳號或角色。', '權限不足');
+                    return;
+                }
+                if (!selectedEventId) return;
+                showLoader();
+                try {
+                    const eventRef = doc(db, ...eventDocPath(selectedEventId));
+                    const snap = await getDoc(eventRef);
+                    if (!snap.exists()) {
+                        showCustomAlert('找不到活動資料，請重新載入。', '錯誤');
+                        return;
+                    }
+                    const prevTopics = Array.isArray(snap.data().topics) ? snap.data().topics : [];
+                    const newTopics = prevTopics.filter(t => t.id !== topicId);
+                    await updateDoc(eventRef, { topics: newTopics });
+                    showCustomAlert('已刪除議題', '完成');
+                } catch (err) {
+                    console.error('Delete topic error:', err);
+                    if (err?.code === 'permission-denied') {
+                        showCustomAlert('無權限更新議題設定，請確認登入帳號或角色。', '權限不足');
+                    } else {
+                        showCustomAlert('刪除失敗，請稍後重試', '錯誤');
+                    }
+                } finally {
+                    hideLoader();
+                }
             }
             
             settingsForm.addEventListener('submit', async (e) => {
@@ -1183,6 +2603,7 @@
             const residentAddressInput = document.getElementById('resident-address');
             const residentAreaInput = document.getElementById('resident-area');
             const residentOwnershipInput = document.getElementById('resident-ownership');
+            const residentHouseholdCountInput = document.getElementById('resident-household-count');
 
             function openResidentModal(resident = null) {
                 addResidentForm.reset();
@@ -1195,9 +2616,11 @@
                     residentAddressInput.value = resident.address || '';
                     residentAreaInput.value = resident.area || 0;
                     residentOwnershipInput.value = resident.ownership || 0;
+                    residentHouseholdCountInput.value = resident.householdCount || 1;
                 } else {
                     residentModalTitle.textContent = '新增住戶';
                     residentIdInput.value = '';
+                    residentHouseholdCountInput.value = 1;
                 }
                 residentModal.classList.remove('hidden');
             }
@@ -1220,16 +2643,17 @@
                 const address = residentAddressInput.value;
                 const area = parseFloat(residentAreaInput.value) || 0;
                 const ownership = parseFloat(residentOwnershipInput.value) || 0;
+                const householdCount = parseInt(residentHouseholdCountInput.value, 10) || 1;
                 const residentId = residentIdInput.value;
                 const createdAt = Date.now();
 
                 try {
                     if (residentId) {
                         const residentRef = doc(db, ...residentDocPath(selectedEventId, residentId));
-                        await updateDoc(residentRef, { qrcodeValue, unit, name, address, area, ownership });
+                        await updateDoc(residentRef, { qrcodeValue, unit, name, address, area, ownership, householdCount });
                     } else {
                         await addDoc(collection(db, ...residentsCollectionPath(selectedEventId)), {
-                            qrcodeValue, unit, name, address, area, ownership, isCheckedIn: false, checkInTimestamp: null, createdAt
+                            qrcodeValue, unit, name, address, area, ownership, householdCount, isCheckedIn: false, checkInTimestamp: null, createdAt
                         });
                     }
                     closeResidentModal();
@@ -1268,6 +2692,7 @@
                             <td class="px-2 py-2 whitespace-nowrap truncate">${resident.name}</td>
                             <td class="px-2 py-2 whitespace-nowrap truncate">${resident.address || ''}</td>
                             <td class="px-2 py-2 whitespace-nowrap">${resident.area || 0}</td>
+                            <td class="px-2 py-2 whitespace-nowrap">${resident.householdCount || 1}</td>
                             <td class="px-2 py-2 whitespace-nowrap">${resident.ownership || 0}%</td>
                             <td class="px-2 py-2"><div id="qr-${resident.id}" class="mx-auto"></div></td>
                             <td class="px-2 py-2 whitespace-nowrap text-sm font-medium">
@@ -1281,10 +2706,29 @@
                     });
 
                     if (allResidentsForSelectedEvent.length === 0) {
-                        residentsListTbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-gray-500">請新增住戶</td></tr>`;
+                        residentsListTbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-gray-500">請新增住戶</td></tr>`;
                     }
 
+                    // Refresh topics table when residents change
+                    renderTopicsTable();
+
                     updateDashboardCalculations();
+                });
+            }
+
+            function listenToTopics(eventId) {
+                const q = query(collection(db, ...topicsCollectionPath(eventId)));
+                return onSnapshot(q, (querySnapshot) => {
+                    currentTopics = [];
+                    querySnapshot.forEach((doc) => currentTopics.push({ id: doc.id, ...doc.data() }));
+                    // Sort by createdAt for consistent order across users
+                    currentTopics.sort((a, b) => {
+                        const aTs = a.createdAt && typeof a.createdAt === 'object' && 'seconds' in a.createdAt ? a.createdAt.seconds : (a.createdAt || 0);
+                        const bTs = b.createdAt && typeof b.createdAt === 'object' && 'seconds' in b.createdAt ? b.createdAt.seconds : (b.createdAt || 0);
+                        return aTs - bTs;
+                    });
+                    renderTopicsMetaList();
+                    renderTopicsTable();
                 });
             }
 
@@ -1294,30 +2738,35 @@
                 const quorumMessage = document.getElementById('quorum-message');
                 const quorumPersonMessage = document.getElementById('quorum-person-message');
 
-                let checkedInCount = 0;
+                let checkedInCount = 0; // 人數（保留不再用於展示）
                 let recentCheckIns = [];
                 let totalOwnership = 0;
                 let checkedInOwnership = 0;
+                let totalHouseholds = 0;
+                let checkedInHouseholds = 0;
 
                 allResidentsForSelectedEvent.forEach(resident => {
                     const ownershipValue = parseFloat(resident.ownership) || 0;
+                    const hc = parseInt(resident.householdCount, 10) || 1;
                     totalOwnership += ownershipValue;
+                    totalHouseholds += hc;
                     if (resident.isCheckedIn) {
                         checkedInCount++;
+                        checkedInHouseholds += hc;
                         checkedInOwnership += ownershipValue;
                         recentCheckIns.push(resident);
                     }
                 });
 
-                document.getElementById('total-residents').textContent = allResidentsForSelectedEvent.length;
-                document.getElementById('checked-in-count').textContent = checkedInCount;
-                document.getElementById('scanner-checked-in').textContent = checkedInCount;
-                document.getElementById('scanner-total').textContent = allResidentsForSelectedEvent.length;
+                document.getElementById('total-residents').textContent = totalHouseholds;
+                document.getElementById('checked-in-count').textContent = checkedInHouseholds;
+                document.getElementById('scanner-checked-in').textContent = checkedInHouseholds;
+                document.getElementById('scanner-total').textContent = totalHouseholds;
 
-                const personRate = allResidentsForSelectedEvent.length > 0 ? ((checkedInCount / allResidentsForSelectedEvent.length) * 100).toFixed(1) : 0;
+                const personRate = totalHouseholds > 0 ? ((checkedInHouseholds / totalHouseholds) * 100).toFixed(2) : 0;
                 document.getElementById('check-in-rate').textContent = `${personRate}%`;
 
-                const ownershipRate = (checkedInOwnership).toFixed(4);
+                const ownershipRate = (checkedInOwnership).toFixed(2);
                 document.getElementById('ownership-check-in-rate').textContent = `${ownershipRate}%`;
 
                 document.getElementById('person-ratio-target').textContent = `(目標: ${currentPersonQuorumRatio}%)`;
@@ -1365,6 +2814,109 @@
                     recentCheckInsList.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-500">尚無報到紀錄</td></tr>`;
                     scannerRecentList.innerHTML = `<li class="text-gray-500 text-center">掃碼紀錄將顯示於此</li>`;
                 }
+
+                // 移除「投票總數／最近投票」展示，僅保留每議題統計
+                const votes = Array.isArray(currentVotes) ? currentVotes.slice() : [];
+
+                // --- Per-Topic Vote Stats (counts + ownership sums) ---
+                const topicStatsContainer = document.getElementById('topic-vote-stats');
+                if (topicStatsContainer) {
+                    const residentsById = {};
+                    const allResidents = Array.isArray(allResidentsForSelectedEvent) ? allResidentsForSelectedEvent : [];
+                    allResidents.forEach(r => { residentsById[r.id] = r; });
+                    const eligibleResidents = allResidents.filter(r => r.isCheckedIn);
+                    const eligibleHouseholdsTotal = eligibleResidents.reduce((sum, r) => sum + (parseInt(r.householdCount, 10) || 1), 0);
+                    const eligibleCount = eligibleHouseholdsTotal;
+                    const eligibleOwnershipTotal = eligibleResidents.reduce((sum, r) => sum + (parseFloat(r.ownership) || 0), 0);
+                    let html = '';
+                    (Array.isArray(currentTopics) ? currentTopics : []).forEach((t, idx) => {
+                        const tvotes = votes.filter(v => v.topicId === t.id);
+                        // 以「住戶」為單位去重，同一住戶同一選項只計一次
+                        // 建立 residentId -> Set<optionIndex> 的映射
+                        const selectionByResident = new Map();
+                        tvotes.forEach(v => {
+                            if (!selectionByResident.has(v.residentId)) selectionByResident.set(v.residentId, new Set());
+                            selectionByResident.get(v.residentId).add(v.optionIndex);
+                        });
+                        const optionStats = (Array.isArray(t.options) ? t.options : []).map((opt, optIdx) => {
+                            let count = 0;
+                            let ownershipSum = 0;
+                            selectionByResident.forEach((set, rid) => {
+                                if (set.has(optIdx)) {
+                                    const rr = residentsById[rid];
+                                    const hc = parseInt(rr?.householdCount, 10) || 1;
+                                    count += hc;
+                                    ownershipSum += parseFloat(rr?.ownership) || 0;
+                                }
+                            });
+                            return { label: opt.label || `選項${optIdx + 1}`, count, ownership: ownershipSum };
+                        });
+                        const countThreshold = parseFloat(t.passCountThresholdPercent ?? 50);
+                        const ownershipThreshold = parseFloat(t.passOwnershipThresholdPercent ?? 50);
+                        const optsHtml = optionStats.map(s => {
+                            const countRatio = eligibleCount > 0 ? (s.count / eligibleCount) * 100 : 0;
+                            const ownershipRatio = eligibleOwnershipTotal > 0 ? (s.ownership / eligibleOwnershipTotal) * 100 : 0;
+                            const meetsBoth = countRatio >= countThreshold && ownershipRatio >= ownershipThreshold;
+                            const meetsEither = !meetsBoth && (countRatio >= countThreshold || ownershipRatio >= ownershipThreshold);
+                            const highlight = meetsBoth ? 'border-2 border-green-500' : (meetsEither ? 'border-2 border-yellow-500' : 'border border-gray-200');
+                            return `
+                                <div class="${highlight} rounded-md p-3">
+                                    <div class="font-semibold">${s.label}</div>
+                                    <div class="text-sm text-gray-600">票數：${s.count}（${countRatio.toFixed(2)}%）</div>
+                                    <div class="text-sm text-gray-600">區分權比例：${ownershipRatio.toFixed(2)}%</div>
+                                </div>
+                            `;
+                        }).join('');
+                        html += `
+                            <div class="bg-white p-4 rounded-lg shadow-sm">
+                                <div class="flex items-center justify-between">
+                                    <div class="font-semibold">${getTopicDisplayName(t, idx)}：${t.title || ''}</div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="text-sm text-gray-600">應投票戶數：${eligibleCount}</div>
+                                        <button class="view-topic-votes-btn px-2 py-1 text-xs sm:text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700" data-topic-id="${t.id}" data-topic-idx="${idx}">查看投票明細</button>
+                                        <button class="end-topic-btn px-2 py-1 text-xs sm:text-sm bg-red-600 text-white rounded-md hover:bg-red-700" data-topic-id="${t.id}">投票結束</button>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+                                    ${optsHtml}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    topicStatsContainer.innerHTML = html || '<div class="text-gray-500 text-sm">尚未設定議題</div>';
+                    // 綁定查看投票明細
+                    topicStatsContainer.querySelectorAll('.view-topic-votes-btn').forEach(btn => {
+                        btn.onclick = () => {
+                            const tid = btn.getAttribute('data-topic-id');
+                            const tIdx = parseInt(btn.getAttribute('data-topic-idx'), 10) || 0;
+                            const topic = (Array.isArray(currentTopics) ? currentTopics : []).find(x => x.id === tid);
+                            if (topic) openTopicVoteDetailsModal(topic, tIdx);
+                        };
+                    });
+                    // 綁定投票結束
+                    topicStatsContainer.querySelectorAll('.end-topic-btn').forEach(btn => {
+                        btn.onclick = async () => {
+                            const tid = btn.getAttribute('data-topic-id');
+                            if (!selectedEventId || !tid) return;
+                            const ok = await showCustomConfirm('確定要結束此議題的投票嗎？結束後將不可再投票。', '投票結束');
+                            if (!ok) return;
+                            try {
+                                showLoader();
+                                const eventRef = doc(db, ...eventDocPath(selectedEventId));
+                                const snap = await getDoc(eventRef);
+                                const prevTopics = (snap.exists() && Array.isArray(snap.data().topics)) ? snap.data().topics : [];
+                                const nextTopics = prevTopics.map(t => t.id === tid ? { ...t, isClosed: true, closedAt: Timestamp.now() } : t);
+                                await updateDoc(eventRef, { topics: nextTopics });
+                                showCustomAlert('已結束投票', '完成');
+                            } catch (err) {
+                                console.error('End topic voting error:', err);
+                                showCustomAlert('結束投票失敗，請稍後再試');
+                            } finally {
+                                hideLoader();
+                            }
+                        };
+                    });
+                }
             }
             
             document.getElementById('residents-list').addEventListener('click', async e => {
@@ -1404,6 +2956,11 @@
             const startScanBtn = document.getElementById('start-scan-btn');
             const stopScanBtn = document.getElementById('stop-scan-btn');
             const readerPlaceholder = document.getElementById('reader-placeholder');
+            const cameraSelectScanner = document.getElementById('camera-select-scanner');
+            const scanFileBtn = document.getElementById('scan-file-btn');
+            const scanFileInput = document.getElementById('scan-file-input');
+            let scannerCamerasLoaded = false;
+            let selectedCameraIdScanner = '';
 
             scanGunForm.addEventListener('submit', (e) => {
                 e.preventDefault();
@@ -1420,24 +2977,452 @@
             speechSynthesis.speak(utterance);
             }
 
-            startScanBtn.addEventListener('click', () => {
+            async function populateCamerasForScanner() {
+                try {
+                    const devices = await Html5Qrcode.getCameras();
+                    if (!cameraSelectScanner) return;
+                    cameraSelectScanner.innerHTML = '<option value="">自動選擇相機</option>';
+                    (devices || []).forEach(d => {
+                        const opt = document.createElement('option');
+                        opt.value = d.id;
+                        opt.textContent = d.label || `相機 ${d.id}`;
+                        cameraSelectScanner.appendChild(opt);
+                    });
+                    scannerCamerasLoaded = true;
+                } catch (_) {
+                    // 保持自動選擇
+                }
+            }
+
+            cameraSelectScanner?.addEventListener('change', (e) => {
+                selectedCameraIdScanner = e.target.value || '';
+            });
+
+            startScanBtn.addEventListener('click', async () => {
                 if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
-                const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1 };
-                
+                const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1, rememberLastUsedCamera: true };
+                if (!scannerCamerasLoaded) await populateCamerasForScanner();
+                const cameraParam = selectedCameraIdScanner ? { deviceId: { exact: selectedCameraIdScanner } } : { facingMode: "environment" };
                 readerPlaceholder.classList.add('hidden');
-                html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => handleCheckIn(decodedText, '攝影機'))
+                html5QrCode.start(cameraParam, config, (decodedText) => handleCheckIn(decodedText, '攝影機'))
                     .then(() => {
                         startScanBtn.disabled = true;
                         stopScanBtn.disabled = false;
                     })
                     .catch(err => {
-                        document.getElementById('scanner-status').textContent = '無法啟動攝影機。請確認權限。';
-                        document.getElementById('scanner-status').className = 'mt-4 text-center font-semibold p-3 rounded-md bg-red-100 text-red-700';
+                        const s = document.getElementById('scanner-status');
+                        s.textContent = '無法啟動攝影機。請確認權限。';
+                        s.className = 'mt-4 text-center font-semibold p-3 rounded-md bg-red-100 text-red-700';
                         readerPlaceholder.classList.remove('hidden');
+                        const isiOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+                        if (isiOS && !window.isSecureContext) {
+                            s.textContent = 'iOS 可能因非安全來源而封鎖相機，請改用「上傳圖片掃碼」或以 HTTPS 存取。';
+                        }
                     });
             });
 
+            scanFileBtn?.addEventListener('click', () => scanFileInput?.click());
+            scanFileInput?.addEventListener('change', async (e) => {
+                try {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (!html5QrCode) html5QrCode = new Html5Qrcode('reader');
+                    const decodedText = await html5QrCode.scanFile(file, true);
+                    handleCheckIn(decodedText, '圖片');
+                    const s = document.getElementById('scanner-status');
+                    s.textContent = '圖片掃碼成功';
+                    s.className = 'mt-4 text-center font-semibold p-3 rounded-md bg-green-100 text-green-800';
+                } catch (_) {
+                    const s = document.getElementById('scanner-status');
+                    s.textContent = '圖片掃碼失敗：無法辨識此影像';
+                    s.className = 'mt-4 text-center font-semibold p-3 rounded-md bg-red-100 text-red-700';
+                } finally {
+                    try { e.target.value = ''; } catch (_) {}
+                }
+            });
+
+            // 顯示單一議題的投票明細對話框（住戶整合視圖 + 原始逐票視圖）
+            function openTopicVoteDetailsModal(topic, topicIdx) {
+                const dialogEl = document.getElementById('custom-modal-dialog');
+                const prevMaxWidth = dialogEl ? dialogEl.style.maxWidth : '';
+                if (dialogEl) {
+                    dialogEl.style.maxWidth = '72rem'; // 擴寬至約 1152px
+                }
+                // 內容可滾動，避免視窗過高時遮蔽
+                try {
+                    const msgBox = document.getElementById('modal-message');
+                    if (msgBox) {
+                        msgBox.style.maxHeight = '70vh';
+                        msgBox.style.overflow = 'auto';
+                    }
+                } catch (_) {}
+                const residentsById = {};
+                (Array.isArray(allResidentsForSelectedEvent) ? allResidentsForSelectedEvent : []).forEach(r => { residentsById[r.id] = r; });
+                const tvotes = (Array.isArray(currentVotes) ? currentVotes : []).filter(v => v.topicId === topic.id);
+
+                // 住戶整合：同一住戶的選項以 Set 去重，並取得最新時間與來源集合
+                const agg = new Map();
+                tvotes.forEach(v => {
+                    const rid = v.residentId;
+                    if (!agg.has(rid)) {
+                        const rr = residentsById[rid];
+                        agg.set(rid, {
+                            unit: rr?.unit || '',
+                            name: rr?.name || '',
+                            ownership: parseFloat(rr?.ownership) || 0,
+                            selections: new Set(),
+                            latestAt: 0,
+                            sources: new Set()
+                        });
+                    }
+                    const a = agg.get(rid);
+                    a.selections.add(v.optionIndex);
+                    a.sources.add(v.source || '');
+                    const ts = v.createdAt?.toMillis ? v.createdAt.toMillis() : (v.createdAt?.seconds ? v.createdAt.seconds * 1000 : 0);
+                    if (ts > a.latestAt) a.latestAt = ts;
+                });
+
+                // 排序：依單元、姓名
+                const aggRows = Array.from(agg.values()).sort((a, b) => {
+                    const ua = (a.unit || '').toString();
+                    const ub = (b.unit || '').toString();
+                    if (ua === ub) return (a.name || '').localeCompare(b.name || '');
+                    return ua.localeCompare(ub);
+                });
+
+                const optionLabelOf = (idx) => (Array.isArray(topic.options) && topic.options[idx] && topic.options[idx].label) ? topic.options[idx].label : `選項${idx + 1}`;
+                const aggTableRows = aggRows.map(r => {
+                    const labels = Array.from(r.selections).sort((x,y)=>x-y).map(optionLabelOf).join('、');
+                    const timeStr = r.latestAt ? new Date(r.latestAt).toLocaleString('zh-TW').replace(/\//g, '-') : 'N/A';
+                    const sources = Array.from(r.sources).filter(s => s).join('、');
+                    return `<tr>
+                        <td class="px-4 py-2 whitespace-nowrap">${r.unit}</td>
+                        <td class="px-4 py-2">${r.name}</td>
+                        <td class="px-4 py-2">${labels || '-'}</td>
+                        <td class="px-4 py-2 text-right">${r.ownership.toFixed(2)}%</td>
+                        <td class="px-4 py-2">${timeStr}</td>
+                        <td class="px-4 py-2">${sources || '-'}</td>
+                        <td class="px-4 py-2 text-center">${r.selections.size}</td>
+                    </tr>`;
+                }).join('');
+
+                // 原始逐票視圖：按時間倒序，並去重同住戶同選項（保留最新一筆）
+                const sortedVotes = tvotes.slice().sort((a,b) => {
+                    const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0);
+                    const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0);
+                    return tb - ta;
+                });
+                const seenKeys = new Set();
+                const uniqueVotes = [];
+                sortedVotes.forEach(v => {
+                    const key = `${v.residentId}|${v.optionIndex}`;
+                    if (!seenKeys.has(key)) {
+                        seenKeys.add(key);
+                        uniqueVotes.push(v);
+                    }
+                });
+                const rawRows = uniqueVotes.map(v => {
+                    const rr = residentsById[v.residentId] || {};
+                    const timeStr = v.createdAt ? (v.createdAt.toMillis ? new Date(v.createdAt.toMillis()).toLocaleString('zh-TW') : new Date(v.createdAt.seconds * 1000).toLocaleString('zh-TW')) : 'N/A';
+                    const label = optionLabelOf(v.optionIndex);
+                    return `<tr>
+                        <td class="px-4 py-2 whitespace-nowrap">${rr.unit || ''}</td>
+                        <td class="px-4 py-2">${rr.name || ''}</td>
+                        <td class="px-4 py-2">${label}</td>
+                        <td class="px-4 py-2">${v.source || '-'}</td>
+                        <td class="px-4 py-2">${timeStr.replace(/\//g, '-')}</td>
+                        <td class="px-4 py-2">${v.code || ''}</td>
+                    </tr>`;
+                }).join('');
+
+                const titleText = `${getTopicDisplayName(topic, topicIdx)} 投票明細`;
+                modalTitle.textContent = titleText;
+                modalMessage.innerHTML = `
+                    <div class="space-y-4">
+                        <div class="text-sm text-gray-600">顯示此議題的投票明細。上方表格以住戶為單位整合選項；下方可切換查看原始逐票紀錄。</div>
+                        <div id="vote-agg-view">
+                            <table class="min-w-full text-sm">
+                                <thead>
+                                    <tr class="bg-gray-100">
+                                        <th class="px-4 py-2 text-left">單元</th>
+                                        <th class="px-4 py-2 text-left">姓名</th>
+                                        <th class="px-4 py-2 text-left">選擇</th>
+                                        <th class="px-4 py-2 text-right">區分權</th>
+                                        <th class="px-4 py-2 text-left">最新時間</th>
+                                        <th class="px-4 py-2 text-left">來源</th>
+                                        <th class="px-4 py-2 text-center">筆數</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${aggTableRows || `<tr><td colspan="7" class="p-4 text-center text-gray-500">尚無投票</td></tr>`}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="vote-raw-view" class="hidden">
+                            <table class="min-w-full text-sm">
+                                <thead>
+                                    <tr class="bg-gray-100">
+                                        <th class="px-4 py-2 text-left">單元</th>
+                                        <th class="px-4 py-2 text-left">姓名</th>
+                                        <th class="px-4 py-2 text-left">選項</th>
+                                        <th class="px-4 py-2 text-left">來源</th>
+                                        <th class="px-4 py-2 text-left">時間</th>
+                                        <th class="px-4 py-2 text-left">投票碼</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${rawRows || `<tr><td colspan="6" class="p-4 text-center text-gray-500">尚無投票</td></tr>`}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+                modalButtons.innerHTML = `
+                    <button id="toggle-raw-btn" class="px-4 py-2 bg-indigo-600 text-white text-base font-medium rounded-md w-auto shadow-sm hover:bg-indigo-700 focus:outline-none">切換原始逐票</button>
+                    <button id="modal-close-btn" class="px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md w-auto shadow-sm hover:bg-gray-300 focus:outline-none">關閉</button>
+                `;
+                customModal.classList.remove('hidden');
+                document.getElementById('toggle-raw-btn').onclick = () => {
+                    const aggView = document.getElementById('vote-agg-view');
+                    const rawView = document.getElementById('vote-raw-view');
+                    if (!aggView || !rawView) return;
+                    const showingRaw = !rawView.classList.contains('hidden');
+                    if (showingRaw) {
+                        rawView.classList.add('hidden');
+                        aggView.classList.remove('hidden');
+                    } else {
+                        aggView.classList.add('hidden');
+                        rawView.classList.remove('hidden');
+                    }
+                };
+                document.getElementById('modal-close-btn').onclick = () => {
+                    customModal.classList.add('hidden');
+                    // 還原寬度與滾動樣式
+                    if (dialogEl) {
+                        dialogEl.style.maxWidth = prevMaxWidth || '';
+                    }
+                    try {
+                        const msgBox = document.getElementById('modal-message');
+                        if (msgBox) {
+                            msgBox.style.maxHeight = '';
+                            msgBox.style.overflow = '';
+                        }
+                    } catch (_) {}
+                };
+            }
+
             stopScanBtn.addEventListener('click', stopScanner);
+
+            // --- QR Scan Vote ---
+            let html5QrCodeVote = null;
+            let lastVoteScanTime = 0, lastVotedCode = null;
+
+            const startScanVoteBtn = document.getElementById('start-scanvote-btn');
+            const stopScanVoteBtn = document.getElementById('stop-scanvote-btn');
+            const scanVoteGunForm = document.getElementById('scanvote-gun-form');
+            const scanVoteGunInput = document.getElementById('scanvote-gun-input');
+            const cameraSelectVote = document.getElementById('camera-select-vote');
+            const scanVoteFileBtn = document.getElementById('scanvote-file-btn');
+            const scanVoteFileInput = document.getElementById('scanvote-file-input');
+            let voteCamerasLoaded = false;
+            let selectedCameraIdVote = '';
+
+            scanVoteGunForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const code = (scanVoteGunInput.value || '').trim();
+                if (!code) return;
+                handleVoteScan(code, '掃碼槍');
+                scanVoteGunInput.value = '';
+            });
+
+            function stopVoteScanner() {
+                if (html5QrCodeVote && html5QrCodeVote.isScanning) {
+                    html5QrCodeVote.stop()
+                        .then(() => {
+                            startScanVoteBtn.disabled = false;
+                            stopScanVoteBtn.disabled = true;
+                            document.getElementById('scanvote-status').innerHTML = '&nbsp;';
+                            document.getElementById('scanvote-status').className = 'mt-4 text-center font-semibold p-3 rounded-md';
+                            document.getElementById('vote-reader-placeholder').textContent = '請點擊 "開始掃碼"';
+                        })
+                        .catch(err => console.log('QR vote scanner stop failed.', err));
+                }
+            }
+
+            async function populateCamerasForVote() {
+                try {
+                    const devices = await Html5Qrcode.getCameras();
+                    if (!cameraSelectVote) return;
+                    cameraSelectVote.innerHTML = '<option value="">自動選擇相機</option>';
+                    (devices || []).forEach(d => {
+                        const opt = document.createElement('option');
+                        opt.value = d.id;
+                        opt.textContent = d.label || `相機 ${d.id}`;
+                        cameraSelectVote.appendChild(opt);
+                    });
+                    voteCamerasLoaded = true;
+                } catch (_) {}
+            }
+
+            cameraSelectVote?.addEventListener('change', (e) => {
+                selectedCameraIdVote = e.target.value || '';
+            });
+
+            startScanVoteBtn.addEventListener('click', async () => {
+                const config = { fps: 10, qrbox: { width: 250, height: 250 }, rememberLastUsedCamera: true };
+                try {
+                    if (!html5QrCodeVote) html5QrCodeVote = new Html5Qrcode('vote-reader');
+                    if (!voteCamerasLoaded) await populateCamerasForVote();
+                    const cameraParam = selectedCameraIdVote ? { deviceId: { exact: selectedCameraIdVote } } : { facingMode: 'environment' };
+                    html5QrCodeVote.start(cameraParam, config, (decodedText) => handleVoteScan(decodedText, '攝影機'))
+                        .then(() => {
+                            // 啟動掃描時重置重複碼記錄，避免跨次掃描受到前次影響
+                            lastVotedCode = null;
+                            lastVoteScanTime = 0;
+                            startScanVoteBtn.disabled = true;
+                            stopScanVoteBtn.disabled = false;
+                            document.getElementById('vote-reader-placeholder').textContent = '';
+                        })
+                        .catch(() => {
+                            const s = document.getElementById('scanvote-status');
+                            s.textContent = '無法啟動攝影機。請確認權限。';
+                            s.className = 'mt-4 text-center font-semibold p-3 rounded-md bg-red-100 text-red-700';
+                            const isiOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+                            if (isiOS && !window.isSecureContext) {
+                                s.textContent = 'iOS 可能因非安全來源而封鎖相機，請改用「上傳圖片掃碼」或以 HTTPS 存取。';
+                            }
+                        });
+                } catch (e) {
+                    const s = document.getElementById('scanvote-status');
+                    s.textContent = '無法啟動攝影機。請確認權限。';
+                    s.className = 'mt-4 text-center font-semibold p-3 rounded-md bg-red-100 text-red-700';
+                }
+            });
+
+            scanVoteFileBtn?.addEventListener('click', () => scanVoteFileInput?.click());
+            scanVoteFileInput?.addEventListener('change', async (e) => {
+                try {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (!html5QrCodeVote) html5QrCodeVote = new Html5Qrcode('vote-reader');
+                    const decodedText = await html5QrCodeVote.scanFile(file, true);
+                    await handleVoteScan(decodedText, '圖片');
+                    const s = document.getElementById('scanvote-status');
+                    s.textContent = '圖片掃碼成功';
+                    s.className = 'mt-4 text-center font-semibold p-3 rounded-md bg-green-100 text-green-800';
+                } catch (_) {
+                    const s = document.getElementById('scanvote-status');
+                    s.textContent = '圖片掃碼失敗：無法辨識此影像';
+                    s.className = 'mt-4 text-center font-semibold p-3 rounded-md bg-red-100 text-red-700';
+                } finally {
+                    try { e.target.value = ''; } catch (_) {}
+                }
+            });
+
+            stopScanVoteBtn.addEventListener('click', stopVoteScanner);
+
+            async function handleVoteScan(decodedText, source) {
+                if (!selectedEventId) return;
+                const now = Date.now();
+                // 靜默忽略攝影機持續讀取的相同 QR Code，避免語音重覆播放
+                if (source === '攝影機' && lastVotedCode === decodedText) {
+                    return;
+                }
+                // 非攝影機來源保留 3 秒抑制重複提示
+                if (source !== '攝影機' && now - lastVoteScanTime < 3000 && lastVotedCode === decodedText) {
+                    const s = document.getElementById('scanvote-status');
+                    s.textContent = '重複投票：此QR Code已記錄';
+                    s.className = 'mt-4 text-center font-semibold p-3 rounded-md bg-yellow-100 text-yellow-800';
+                    speak('重複投票');
+                    return;
+                }
+                lastVoteScanTime = now;
+                lastVotedCode = decodedText;
+
+                const statusEl = document.getElementById('scanvote-status');
+                const voteList = document.getElementById('scanvote-recent-list');
+
+                const match = decodedText.match(/^A(\d{3})M(\d{2})([A-Z])$/);
+                if (!match) {
+                    statusEl.textContent = '投票失敗：無效的投票碼';
+                    statusEl.className = 'mt-4 text-center font-semibold p-3 rounded-md bg-red-100 text-red-700';
+                    speak('投票失敗');
+                    return;
+                }
+                const residentSerial = parseInt(match[1], 10);
+                const topicSerial = parseInt(match[2], 10);
+                const optionLetter = match[3];
+                const optionIndex = getOptionIndexFromCode(optionLetter);
+
+                const resident = allResidentsForSelectedEvent[residentSerial - 1];
+                const topic = currentTopics[topicSerial - 1];
+                if (!resident || !topic || optionIndex < 0 || !Array.isArray(topic.options) || !topic.options[optionIndex]) {
+                    statusEl.textContent = '投票失敗：投票碼對應資料不存在';
+                    statusEl.className = 'mt-4 text-center font-semibold p-3 rounded-md bg-red-100 text-red-700';
+                    speak('投票失敗');
+                    return;
+                }
+                // 僅限已報到住戶可投票
+                if (!resident.isCheckedIn) {
+                    statusEl.textContent = '禁止投票：尚未報到';
+                    statusEl.className = 'mt-4 text-center font-semibold p-3 rounded-md bg-red-100 text-red-700';
+                    try { speak('尚未報到不可投票'); } catch (_) {}
+                    return;
+                }
+
+                const label = topic.options[optionIndex].label || `選項${optionIndex + 1}`;
+                const simpleTime = new Date().toLocaleTimeString('zh-TW');
+
+                showLoader();
+                const eventRef = doc(db, ...eventDocPath(selectedEventId));
+                try {
+                    const snap = await getDoc(eventRef);
+                    const prev = (snap.exists() && Array.isArray(snap.data().votes)) ? snap.data().votes : [];
+                    // 1) 同一QR Code只能記錄一次
+                    if (prev.some(v => v.code === decodedText)) {
+                        statusEl.textContent = '重複投票：此QR Code已記錄';
+                        statusEl.className = 'mt-4 text-center font-semibold p-3 rounded-md bg-yellow-100 text-yellow-800';
+                        speak('重複投票');
+                        return;
+                    }
+                    // 2) 若該議題未勾選複選，限制每位住戶對該議題只能投一次
+                    if (!topic.multiSelect && prev.some(v => v.topicId === topic.id && v.residentId === resident.id)) {
+                        statusEl.textContent = '已於該議題投票：不可重覆選擇';
+                        statusEl.className = 'mt-4 text-center font-semibold p-3 rounded-md bg-yellow-100 text-yellow-800';
+                        speak('已於該議題投票');
+                        return;
+                    }
+
+                    const vote = {
+                        residentId: resident.id,
+                        unit: resident.unit,
+                        name: resident.name,
+                        topicId: topic.id,
+                        topicSerial,
+                        optionIndex,
+                        optionLabel: label,
+                        code: decodedText,
+                        createdAt: Timestamp.now(),
+                        source,
+                        createdBy: currentUser.name
+                    };
+                    await updateDoc(eventRef, { votes: [...prev, vote] });
+                    statusEl.textContent = `投票成功：${resident.unit} ${resident.name} → 議題${topicSerial}「${label}」`;
+                    statusEl.className = 'mt-4 text-center font-semibold p-3 rounded-md bg-green-100 text-green-800';
+                    speak('投票成功');
+                    voteList.innerHTML = `<li class=\"p-2 bg-gray-100 rounded-md\"><div><span class=\"font-bold\">${resident.unit} ${resident.name}</span> - ${simpleTime}</div><span class=\"text-sm text-gray-500 block\">投票：議題${topicSerial} - ${label}</span></li>` + voteList.innerHTML;
+                    // 本地快取與儀表板即時更新
+                    try { currentVotes.push(vote); } catch (_) {}
+                    updateDashboardCalculations();
+                } catch (err) {
+                    console.error('Vote persist error:', err);
+                    statusEl.textContent = '投票失敗：儲存錯誤';
+                    statusEl.className = 'mt-4 text-center font-semibold p-3 rounded-md bg-red-100 text-red-700';
+                    speak('投票失敗');
+                } finally {
+                    hideLoader();
+                }
+            }
 
             function stopScanner() {
                 if (html5QrCode && html5QrCode.isScanning) {
@@ -1733,6 +3718,7 @@
 
             async function deleteEventAndSubcollection(eventId) {
                 if (!eventId) return;
+                // Delete residents subcollection
                 const residentsColRef = collection(db, ...residentsCollectionPath(eventId));
                 const residentsSnapshot = await getDocs(residentsColRef);
                 if (!residentsSnapshot.empty) {
@@ -1740,7 +3726,119 @@
                     residentsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
                     await batch.commit();
                 }
+                // Delete topics subcollection
+                const topicsColRef = collection(db, ...topicsCollectionPath(eventId));
+                const topicsSnapshot = await getDocs(topicsColRef);
+                if (!topicsSnapshot.empty) {
+                    const batch2 = writeBatch(db);
+                    topicsSnapshot.docs.forEach(doc => batch2.delete(doc.ref));
+                    await batch2.commit();
+                }
+                // Finally delete the event doc
                 await deleteDoc(doc(db, ...eventDocPath(eventId)));
+            }
+
+            async function copySubcollection(srcColRef, destColRef) {
+                const snapshot = await getDocs(srcColRef);
+                if (snapshot.empty) return;
+                let batch = writeBatch(db);
+                let count = 0;
+                for (const docSnap of snapshot.docs) {
+                    const destDocRef = doc(destColRef, docSnap.id);
+                    batch.set(destDocRef, docSnap.data());
+                    count++;
+                    if (count >= 400) {
+                        await batch.commit();
+                        batch = writeBatch(db);
+                        count = 0;
+                    }
+                }
+                if (count > 0) {
+                    await batch.commit();
+                }
+            }
+
+            async function duplicateEventWithSubcollections(eventId) {
+                const srcEventRef = doc(db, ...eventDocPath(eventId));
+                const srcSnap = await getDoc(srcEventRef);
+                if (!srcSnap.exists()) throw new Error('Source event not found');
+                const data = srcSnap.data();
+                const newEventRef = await addDoc(collection(db, ...eventsCollectionPath()), {
+                    ...data,
+                    createdAt: serverTimestamp(),
+                    creatorId: currentUser.uid,
+                    creatorName: currentUser.name
+                });
+                await copySubcollection(
+                    collection(db, ...residentsCollectionPath(eventId)),
+                    collection(db, ...residentsCollectionPath(newEventRef.id))
+                );
+                await copySubcollection(
+                    collection(db, ...topicsCollectionPath(eventId)),
+                    collection(db, ...topicsCollectionPath(newEventRef.id))
+                );
+            }
+
+            async function archiveEventWithSubcollections(eventId) {
+                const srcEventRef = doc(db, ...eventDocPath(eventId));
+                const srcSnap = await getDoc(srcEventRef);
+                if (!srcSnap.exists()) throw new Error('Source event not found');
+                const data = srcSnap.data();
+                await setDoc(doc(db, ...eventArchiveDocPath(eventId)), {
+                    ...data,
+                    archivedAt: serverTimestamp(),
+                    archivedBy: currentUser && currentUser.uid ? currentUser.uid : null,
+                    archivedByName: currentUser && currentUser.name ? currentUser.name : null
+                });
+                await copySubcollection(
+                    collection(db, ...residentsCollectionPath(eventId)),
+                    collection(db, ...residentsArchiveCollectionPath(eventId))
+                );
+                await copySubcollection(
+                    collection(db, ...topicsCollectionPath(eventId)),
+                    collection(db, ...topicsArchiveCollectionPath(eventId))
+                );
+                await deleteEventAndSubcollection(eventId);
+            }
+
+            async function deleteArchiveSubcollections(eventId) {
+                // Delete archived residents
+                const archivedResidentsColRef = collection(db, ...residentsArchiveCollectionPath(eventId));
+                const residentsSnapshot = await getDocs(archivedResidentsColRef);
+                if (!residentsSnapshot.empty) {
+                    const batch = writeBatch(db);
+                    residentsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+                    await batch.commit();
+                }
+                // Delete archived topics
+                const archivedTopicsColRef = collection(db, ...topicsArchiveCollectionPath(eventId));
+                const topicsSnapshot = await getDocs(archivedTopicsColRef);
+                if (!topicsSnapshot.empty) {
+                    const batch2 = writeBatch(db);
+                    topicsSnapshot.docs.forEach(doc => batch2.delete(doc.ref));
+                    await batch2.commit();
+                }
+            }
+
+            async function restoreEventFromArchive(eventId) {
+                const srcEventRef = doc(db, ...eventArchiveDocPath(eventId));
+                const srcSnap = await getDoc(srcEventRef);
+                if (!srcSnap.exists()) throw new Error('Archived event not found');
+                const data = srcSnap.data();
+                // 寫回 events 集合（沿用原 eventId）
+                await setDoc(doc(db, ...eventDocPath(eventId)), data);
+                // 複製子集合回 events
+                await copySubcollection(
+                    collection(db, ...residentsArchiveCollectionPath(eventId)),
+                    collection(db, ...residentsCollectionPath(eventId))
+                );
+                await copySubcollection(
+                    collection(db, ...topicsArchiveCollectionPath(eventId)),
+                    collection(db, ...topicsCollectionPath(eventId))
+                );
+                // 清理歸檔子集合並刪除歸檔 doc
+                await deleteArchiveSubcollections(eventId);
+                await deleteDoc(srcEventRef);
             }
             
             document.getElementById('print-roster-sequential-btn').addEventListener('click', () => {
@@ -1768,6 +3866,50 @@
                     } else {
                         showCustomAlert('目前沒有任何報到紀錄可重設。');
                     }
+                }
+            });
+
+            document.getElementById('reset-votes-btn').addEventListener('click', async () => {
+                if (!selectedEventId) return;
+                const confirmReset = await showCustomConfirm('您確定要重設此活動的投票紀錄嗎？此操作無法復原！');
+                if (!confirmReset) return;
+                const selection = await showResetVotesDialog();
+                if (!selection) return;
+                showLoader();
+                try {
+                    const eventRef = doc(db, ...eventDocPath(selectedEventId));
+                    const snap = await getDoc(eventRef);
+                    const prev = (snap.exists() && Array.isArray(snap.data().votes)) ? snap.data().votes : [];
+                    let newVotes = prev;
+                    if (selection.scope === 'all') {
+                        newVotes = [];
+                    } else if (selection.scope === 'single' && selection.topicId) {
+                        newVotes = prev.filter(v => v.topicId !== selection.topicId);
+                    }
+                    await updateDoc(eventRef, { votes: newVotes });
+                    // 本地狀態與 UI 更新
+                    currentVotes = Array.isArray(newVotes) ? newVotes.slice() : [];
+                    updateDashboardCalculations();
+                    const voteListEl = document.getElementById('scanvote-recent-list');
+                    if (voteListEl) {
+                        if (currentVotes.length === 0) {
+                            voteListEl.innerHTML = '<li class="text-gray-500 text-center">尚無投票紀錄</li>';
+                        } else {
+                            const items = currentVotes.slice(-10).reverse().map(v => {
+                                const time = v.createdAt?.toDate ? v.createdAt.toDate().toLocaleTimeString('zh-TW') : new Date().toLocaleTimeString('zh-TW');
+                                const topicSerial = v.topicSerial || '?';
+                                const label = v.optionLabel || `選項${(v.optionIndex || 0) + 1}`;
+                                return `<li class=\"p-2 bg-gray-100 rounded-md\"><div><span class=\"font-bold\">${v.unit} ${v.name}</span> - ${time}</div><span class=\"text-sm text-gray-500 block\">投票：議題${topicSerial} - ${label}</span></li>`;
+                            }).join('');
+                            voteListEl.innerHTML = items;
+                        }
+                    }
+                    hideLoader();
+                    showCustomAlert(selection.scope === 'all' ? '已重設所有議題的投票紀錄！' : '已重設所選議題的投票紀錄！');
+                } catch (err) {
+                    console.error('Reset votes failed:', err);
+                    hideLoader();
+                    showCustomAlert('重設投票紀錄失敗，請稍後再試。');
                 }
             });
 
@@ -1803,11 +3945,14 @@
                     showCustomAlert('沒有住戶資料可匯出。');
                     return;
                 }
-                const headers = ['qrcodeValue', 'unit', 'name', 'address', 'area', 'ownership'];
+                const headers = ['qrcodeValue', 'unit', 'name', 'address', 'area', 'ownership', 'householdCount'];
                 let csvContent = '\uFEFF' + headers.join(',') + '\n';
                 
                 allResidentsForSelectedEvent.forEach(resident => {
-                    const row = headers.map(header => `"${resident[header] || ''}"`);
+                    const row = headers.map(header => {
+                        if (header === 'householdCount') return `"${parseInt(resident.householdCount, 10) || 1}"`;
+                        return `"${resident[header] || ''}"`;
+                    });
                     csvContent += row.join(',') + '\n';
                 });
 
@@ -1865,6 +4010,7 @@
                             address: residentData.address || '',
                             area: parseFloat(residentData.area) || 0,
                             ownership: parseFloat(residentData.ownership) || 0,
+                            householdCount: parseInt(residentData.householdCount, 10) || 1,
                             isCheckedIn: false,
                             checkInTimestamp: null,
                             createdAt: importTimestamp + i
@@ -1922,6 +4068,17 @@
                 shareUrlDisplay.textContent = url;
                 shareModal.classList.remove('hidden');
             });
+
+            if (shareVoteDashboardBtn) {
+                shareVoteDashboardBtn.addEventListener('click', () => {
+                    const url = `${window.location.origin}${window.location.pathname}?view=public&event=${selectedEventId}&target=vote`;
+                    shareQrCodeContainer.innerHTML = '';
+                    new QRCode(shareQrCodeContainer, { text: url, width: 256, height: 256 });
+                    shareLink.href = url;
+                    shareUrlDisplay.textContent = url;
+                    shareModal.classList.remove('hidden');
+                });
+            }
 
             closeShareModalBtn.addEventListener('click', () => {
                 shareModal.classList.add('hidden');
@@ -1987,18 +4144,19 @@
                          if(doc.id === currentUser.uid) return;
                          
                          const tr = document.createElement('tr');
-                         tr.innerHTML = `
-                             <td class="px-2 py-2 whitespace-nowrap">${userData.username}</td>
-                             <td class="px-2 py-2 whitespace-nowrap">${userData.role}</td>
-                             <td class="px-2 py-2 whitespace-nowrap text-sm font-medium">
-                                 <button data-id="${doc.id}" class="change-role-btn text-blue-600 hover:text-blue-900">變更角色</button>
-                                 <button data-id="${doc.id}" class="delete-user-btn text-red-600 hover:text-red-900 ml-2">刪除</button>
-                             </td>
-                         `;
-                         userListTbody.appendChild(tr);
-                     });
-                 });
-            }
+                          tr.innerHTML = `
+                              <td class="px-2 py-2 whitespace-nowrap">${userData.username}</td>
+                              <td class="px-2 py-2 whitespace-nowrap">${userData.role}</td>
+                              <td class="px-2 py-2 whitespace-nowrap text-sm font-medium">
+                                  <button data-id="${doc.id}" class="change-role-btn text-blue-600 hover:text-blue-900">變更角色</button>
+                                 <button data-id="${doc.id}" class="edit-user-settings-btn text-indigo-600 hover:text-indigo-900 ml-2">編輯設定</button>
+                                  <button data-id="${doc.id}" class="delete-user-btn text-red-600 hover:text-red-900 ml-2">刪除</button>
+                              </td>
+                          `;
+                          userListTbody.appendChild(tr);
+                      });
+                  });
+             }
 
             document.getElementById('users-list').addEventListener('click', async (e) => {
                 const target = e.target;
@@ -2036,6 +4194,83 @@
                         }
                     } else if (newRole) {
                         showCustomAlert('無效的角色名稱！');
+                    }
+                }
+
+                if (target.classList.contains('edit-user-settings-btn')) {
+                    try {
+                        showLoader();
+                        const userRef = doc(db, ...userDocPath(userId));
+                        const userSnap = await getDoc(userRef);
+                        const udata = userSnap.exists() ? userSnap.data() : { role: 'staff', username: '', email: '' };
+
+                        if (udata.role === 'staff') {
+                            const currentAllowed = Array.isArray(udata.allowedEventIds) ? udata.allowedEventIds : [];
+                            // 取得全部活動供勾選
+                            const evSnap = await getDocs(query(collection(db, ...eventsCollectionPath())));
+                            const events = [];
+                            evSnap.forEach(d => events.push({ id: d.id, ...d.data() }));
+                            // 建立勾選清單 UI
+                            modalTitle.textContent = '編輯帳號可操作活動 (Staff)';
+                            const listHtml = events.length === 0 ? '<div class="text-gray-500">目前尚無活動可指派</div>' : events.map(ev => {
+                                const checked = currentAllowed.includes(ev.id) ? 'checked' : '';
+                                const label = `${ev.communityName || '社區'} - ${ev.eventName || '活動'} (${ev.eventDate ? ev.eventDate.replace('T',' ') : ''})`;
+                                return `<label class="flex items-center gap-2 py-1"><input type="checkbox" class="staff-assign-event" value="${ev.id}" ${checked}/> <span>${label}</span></label>`;
+                            }).join('');
+                            modalMessage.innerHTML = `<div class="max-h-64 overflow-y-auto">${listHtml}</div>`;
+                            modalButtons.innerHTML = `
+                                <button id="modal-save-assign" class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-1/2 shadow-sm hover:bg-red-700">儲存</button>
+                                <button id="modal-cancel-assign" class="px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md w-1/2 shadow-sm hover:bg-gray-300">取消</button>
+                            `;
+                            customModal.classList.remove('hidden');
+                            document.getElementById('modal-cancel-assign').onclick = () => { customModal.classList.add('hidden'); };
+                            document.getElementById('modal-save-assign').onclick = async () => {
+                                const ids = Array.from(document.querySelectorAll('.staff-assign-event:checked')).map(i => i.value);
+                                try {
+                                    await updateDoc(userRef, { allowedEventIds: ids });
+                                    customModal.classList.add('hidden');
+                                    showCustomAlert('已更新可操作活動');
+                                } catch (err) {
+                                    console.error('Update allowedEventIds failed:', err);
+                                    showCustomAlert('更新失敗，請稍後再試');
+                                }
+                            };
+                        } else {
+                            // 通用帳號編輯（非 staff）：可修改顯示帳號與備存 email
+                            modalTitle.textContent = '編輯帳號資料';
+                            modalMessage.innerHTML = `
+                                <div class="space-y-2">
+                                    <label class="block text-sm">帳號</label>
+                                    <input id="edit-username" type="text" class="w-full px-3 py-2 border rounded" value="${udata.username || ''}" />
+                                    <label class="block text-sm mt-2">Email（用於通知）</label>
+                                    <input id="edit-email" type="email" class="w-full px-3 py-2 border rounded" value="${udata.email || ''}" />
+                                    <p class="text-xs text-gray-500 mt-1">提醒：此處更新的 Email 為資料備存，非登入用 Email。</p>
+                                </div>
+                            `;
+                            modalButtons.innerHTML = `
+                                <button id="modal-save-user" class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-1/2 shadow-sm hover:bg-red-700">儲存</button>
+                                <button id="modal-cancel-user" class="px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md w-1/2 shadow-sm hover:bg-gray-300">取消</button>
+                            `;
+                            customModal.classList.remove('hidden');
+                            document.getElementById('modal-cancel-user').onclick = () => { customModal.classList.add('hidden'); };
+                            document.getElementById('modal-save-user').onclick = async () => {
+                                const newUsername = /** @type {HTMLInputElement} */(document.getElementById('edit-username')).value;
+                                const newEmail = /** @type {HTMLInputElement} */(document.getElementById('edit-email')).value;
+                                try {
+                                    await updateDoc(userRef, { username: newUsername, email: newEmail });
+                                    customModal.classList.add('hidden');
+                                    showCustomAlert('帳號資料已更新');
+                                } catch (err) {
+                                    console.error('Update user profile failed:', err);
+                                    showCustomAlert('更新失敗，請稍後再試');
+                                }
+                            };
+                        }
+                    } catch (err) {
+                        console.error('Open staff assign modal error:', err);
+                        showCustomAlert('開啟編輯設定失敗');
+                    } finally {
+                        hideLoader();
                     }
                 }
             });
@@ -2148,21 +4383,50 @@
             appContainer.style.display = 'none';
             publicView.classList.remove('hidden');
 
+            const publicHeader = document.getElementById('public-header');
             const publicCommunityName = document.getElementById('public-community-name-display');
             const publicEventTitle = document.getElementById('public-event-title-display');
+            const publicControls = document.getElementById('public-controls');
             const publicDashboardContent = document.getElementById('public-dashboard-content');
+
+            const params = new URLSearchParams(window.location.search);
+            const publicTarget = (params.get('target') || 'checkin').toLowerCase();
+
+            // 建立公開儀表板的切換 URL（保留既有查詢參數，僅調整 target）
+            const makePublicUrl = (target) => {
+                const newParams = new URLSearchParams(window.location.search);
+                newParams.set('view', 'public');
+                newParams.set('target', target);
+                return window.location.pathname + '?' + newParams.toString();
+            };
 
             const eventRef = doc(db, ...eventDocPath(eventId));
             onSnapshot(eventRef, (docSnap) => {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
+                    const defaultTitle = publicTarget === 'vote' ? '投票即時儀表板' : '報到即時儀表板';
                     publicCommunityName.textContent = data.communityName || '社群名稱';
-                    publicEventTitle.textContent = data.eventName || '活動報表';
+                    publicEventTitle.textContent = (data.eventName && String(data.eventName).trim()) ? data.eventName : defaultTitle;
+
+                    if (publicTarget === 'vote') {
+                        publicHeader.className = 'text-center mb-6 pb-4 bg-indigo-700 text-white rounded-lg shadow';
+                        publicCommunityName.className = 'text-4xl font-extrabold text-white';
+                        publicEventTitle.className = 'text-2xl text-indigo-100 mt-1';
+                    } else {
+                        publicHeader.className = 'text-center mb-6 pb-4 bg-red-700 text-white rounded-lg shadow';
+                        publicCommunityName.className = 'text-4xl font-extrabold text-white';
+                        publicEventTitle.className = 'text-2xl text-red-100 mt-1';
+                    }
                     const residentsColRef = collection(db, ...residentsCollectionPath(eventId));
                     onSnapshot(residentsColRef, (residentsSnapshot) => {
                         const residents = [];
-                        residentsSnapshot.forEach(doc => residents.push(doc.data()));
-                        renderPublicDashboard(data, residents);
+                        // 公開頁需保留每位住戶的 id 以便匹配 votes.residentId
+                        residentsSnapshot.forEach(doc => residents.push({ id: doc.id, ...doc.data() }));
+                        if (publicTarget === 'vote') {
+                            renderPublicVoteDashboard(data, residents);
+                        } else {
+                            renderPublicDashboard(data, residents);
+                        }
                     });
                 } else {
                     publicCommunityName.textContent = '找不到活動';
@@ -2170,6 +4434,15 @@
             });
 
             function renderPublicDashboard(eventData, residentsData) {
+                // 儀表板切換按鈕（報到/投票）
+                const toggleHtml = `
+                    <div class="flex items-center justify-center w-full gap-2">
+                        <a href="${makePublicUrl('checkin')}" class="px-3 py-1 rounded-md text-sm ${publicTarget === 'checkin' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">報到儀表板</a>
+                        <a href="${makePublicUrl('vote')}" class="px-3 py-1 rounded-md text-sm ${publicTarget === 'vote' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">投票儀表板</a>
+                    </div>
+                `;
+                publicControls.innerHTML = toggleHtml;
+
                 let checkedInCount = 0;
                 let checkedInOwnership = 0;
 
@@ -2180,8 +4453,8 @@
                     }
                 });
                 
-                const personRate = residentsData.length > 0 ? parseFloat(((checkedInCount / residentsData.length) * 100).toFixed(1)) : 0;
-                const ownershipRate = parseFloat(checkedInOwnership.toFixed(4));
+                const personRate = residentsData.length > 0 ? parseFloat(((checkedInCount / residentsData.length) * 100).toFixed(2)) : 0;
+                const ownershipRate = parseFloat(checkedInOwnership.toFixed(2));
                 
                 const personQuorumRatio = parseFloat(eventData.personRatio) || 0;
                 const ownershipQuorumRatio = parseFloat(eventData.ownershipRatio) || 0;
@@ -2193,18 +4466,18 @@
                     <div class="bg-white p-6 rounded-xl shadow-md flex items-center justify-between">
                          <div>
                              <p class="text-sm font-medium text-gray-500">總住戶數</p>
-                             <p class="text-3xl font-bold text-red-600">${residentsData.length}</p>
+                             <p class="text-3xl font-bold text-red-600">${totalHouseholds}</p>
                          </div>
                     </div>
                     <div class="bg-white p-6 rounded-xl shadow-md flex items-center justify-between">
                         <div>
-                            <p class="text-sm font-medium text-gray-500">已報到人數</p>
-                            <p class="text-3xl font-bold text-green-600">${checkedInCount}</p>
+                            <p class="text-sm font-medium text-gray-500">已報到戶數</p>
+                            <p class="text-3xl font-bold text-green-600">${checkedInHouseholds}</p>
                         </div>
                     </div>
                     <div class="bg-white p-6 rounded-xl shadow-md flex items-center justify-between">
                         <div>
-                            <p class="text-sm font-medium text-gray-500">人數報到率 <span class="text-xs">(目標: ${personQuorumRatio}%)</span></p>
+                            <p class="text-sm font-medium text-gray-500">戶數報到率 <span class="text-xs">(目標: ${personQuorumRatio}%)</span></p>
                             <p class="text-3xl font-bold text-orange-600">${personRate}%</p>
                         </div>
                         <span class="${personQuorumReached ? '' : 'hidden'} text-green-600 font-bold text-lg">已達法定開會人數</span>
@@ -2217,6 +4490,198 @@
                         <span class="${ownershipQuorumReached ? '' : 'hidden'} text-green-600 font-bold text-lg">已達法定開會區分權比例</span>
                     </div>
                 `;
+            }
+
+            function renderPublicVoteDashboard(eventData, residentsData) {
+                // 儀表板切換按鈕（報到/投票）
+                const toggleHtml = `
+                    <div class="flex items-center gap-2">
+                        <a href="${makePublicUrl('checkin')}" class="px-3 py-1 rounded-md text-sm ${publicTarget === 'checkin' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">報到儀表板</a>
+                        <a href="${makePublicUrl('vote')}" class="px-3 py-1 rounded-md text-sm ${publicTarget === 'vote' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">投票儀表板</a>
+                    </div>
+                `;
+                const topics = Array.isArray(eventData.topics) ? eventData.topics : [];
+                const votes = Array.isArray(eventData.votes) ? eventData.votes : [];
+                const residentsById = {};
+                const allResidents = Array.isArray(residentsData) ? residentsData : [];
+                allResidents.forEach(r => { residentsById[r.id] = r; });
+                const eligibleResidents = allResidents.filter(r => r.isCheckedIn);
+                const eligibleHouseholdsTotal = eligibleResidents.reduce((sum, r) => sum + (parseInt(r.householdCount, 10) || 1), 0);
+                const eligibleCount = eligibleHouseholdsTotal;
+                const eligibleOwnershipTotal = eligibleResidents.reduce((sum, r) => sum + (parseFloat(r.ownership) || 0), 0);
+
+                function getTopicDisplayNamePublic(topic, idx) {
+                    const prefix = topic?.labelPrefix || '議題';
+                    const serial = topic?.serialText || (idx + 1);
+                    return `${prefix}${serial}`;
+                }
+
+                if (topics.length === 0) {
+                    publicControls.innerHTML = '';
+                    publicDashboardContent.innerHTML = '<div class="text-gray-500 text-sm">尚未設定議題</div>';
+                    return;
+                }
+
+                const mode = window.publicVoteViewMode === 'tabs' ? 'tabs' : 'list';
+                let html = '';
+                let controlsHtml = '';
+
+                if (mode === 'tabs') {
+                    // Tabs mode: make content container full width (single column)
+                    publicDashboardContent.className = 'grid grid-cols-1 gap-6';
+                    const selectedIdx = Math.min(Math.max(parseInt(window.publicTopicIndex || 0, 10), 0), topics.length - 1);
+                    const tabsHtml = topics.map((t, idx) => {
+                        const active = idx === selectedIdx ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700';
+                        return `<button class="public-topic-tab px-3 py-1 rounded-md text-sm ${active}" data-idx="${idx}">${getTopicDisplayNamePublic(t, idx)}</button>`;
+                    }).join(' ');
+                    controlsHtml = `
+                        <div class="flex items-center justify-between w-full">
+                            ${toggleHtml}
+                            <div class="flex flex-wrap gap-2">${tabsHtml}</div>
+                            <button id="toggle-public-view-mode" class="px-2 py-1 text-xs sm:text-sm bg-gray-200 hover:bg-gray-300 rounded">切換為列表</button>
+                        </div>
+                    `;
+
+                    const t = topics[selectedIdx];
+                    const tvotes = votes.filter(v => v.topicId === t.id);
+                    const selectionByResident = new Map();
+                    tvotes.forEach(v => {
+                        if (!selectionByResident.has(v.residentId)) selectionByResident.set(v.residentId, new Set());
+                        selectionByResident.get(v.residentId).add(v.optionIndex);
+                    });
+                    const optionStats = (Array.isArray(t.options) ? t.options : []).map((opt, optIdx) => {
+                        let count = 0;
+                        let ownershipSum = 0;
+                        selectionByResident.forEach((set, rid) => {
+                            if (set.has(optIdx)) {
+                                const rr = residentsById[rid];
+                                const hc = parseInt(rr?.householdCount, 10) || 1;
+                                count += hc;
+                                ownershipSum += parseFloat(rr?.ownership) || 0;
+                            }
+                        });
+                        return { label: opt.label || `選項${optIdx + 1}`, count, ownership: ownershipSum };
+                    });
+                    const countThreshold = parseFloat(t.passCountThresholdPercent ?? 50);
+                    const ownershipThreshold = parseFloat(t.passOwnershipThresholdPercent ?? 50);
+                    const columns = optionStats.length || 1;
+                    const optsHtml = optionStats.map(s => {
+                        const countRatio = eligibleCount > 0 ? (s.count / eligibleCount) * 100 : 0;
+                        const ownershipRatio = eligibleOwnershipTotal > 0 ? (s.ownership / eligibleOwnershipTotal) * 100 : 0;
+                        const meetsBoth = countRatio >= countThreshold && ownershipRatio >= ownershipThreshold;
+                        const meetsEither = !meetsBoth && (countRatio >= countThreshold || ownershipRatio >= ownershipThreshold);
+                        const highlight = meetsBoth ? 'border-2 border-green-500' : (meetsEither ? 'border-2 border-yellow-500' : 'border border-gray-200');
+                        return `
+                            <div class="${highlight} rounded-md p-3">
+                                <div class="font-semibold">${s.label}</div>
+                                <div class="text-sm text-gray-600">投票戶數：${s.count}（${countRatio.toFixed(2)}%）</div>
+                                <div class="text-sm text-gray-600">區分權比例：${ownershipRatio.toFixed(2)}%</div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    const proposerText = t?.proposer?.type === 'resident' ? `住戶(${t?.proposer?.unit || ''})` : '管委會';
+                    const displayName = getTopicDisplayNamePublic(t, selectedIdx);
+                    html = `
+                        <div class="bg-white p-4 rounded-lg shadow-sm">
+                            <div class="font-semibold mb-2">議題名稱：${displayName}</div>
+                            <div class="text-sm text-gray-700 mb-1">主旨：${t.title || ''}</div>
+                            <div class="text-sm text-gray-700 mb-1">說明：${t.description || '-'}</div>
+                            <div class="text-sm text-gray-700 mb-3">提案人：${proposerText}</div>
+                            <div class="text-sm text-gray-600">應投票戶數：${eligibleCount}</div>
+                            <div class="grid gap-3 mt-3" style="grid-template-columns: repeat(${columns}, minmax(0, 1fr));">
+                                ${optsHtml}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // List mode: keep two columns on md screens for multiple cards
+                    publicDashboardContent.className = 'grid grid-cols-1 md:grid-cols-2 gap-6';
+                    // 列表模式：原本的全部議題一併呈現，加入切換控制與議題資訊
+                    controlsHtml = `
+                        <div class="flex items-center justify-between w-full">
+                            ${toggleHtml}
+                            <div class="flex justify-end w-full">
+                                <button id="toggle-public-view-mode" class="px-2 py-1 text-xs sm:text-sm bg-gray-200 hover:bg-gray-300 rounded">切換為分頁</button>
+                            </div>
+                        </div>
+                    `;
+                    topics.forEach((t, idx) => {
+                        const tvotes = votes.filter(v => v.topicId === t.id);
+                        const selectionByResident = new Map();
+                        tvotes.forEach(v => {
+                            if (!selectionByResident.has(v.residentId)) selectionByResident.set(v.residentId, new Set());
+                            selectionByResident.get(v.residentId).add(v.optionIndex);
+                        });
+                        const optionStats = (Array.isArray(t.options) ? t.options : []).map((opt, optIdx) => {
+                            let count = 0;
+                            let ownershipSum = 0;
+                            selectionByResident.forEach((set, rid) => {
+                                if (set.has(optIdx)) {
+                                    const rr = residentsById[rid];
+                                    const hc = parseInt(rr?.householdCount, 10) || 1;
+                                    count += hc;
+                                    ownershipSum += parseFloat(rr?.ownership) || 0;
+                                }
+                            });
+                            return { label: opt.label || `選項${optIdx + 1}`, count, ownership: ownershipSum };
+                        });
+                        const countThreshold = parseFloat(t.passCountThresholdPercent ?? 50);
+                        const ownershipThreshold = parseFloat(t.passOwnershipThresholdPercent ?? 50);
+                        const optsHtml = optionStats.map(s => {
+                            const countRatio = eligibleCount > 0 ? (s.count / eligibleCount) * 100 : 0;
+                            const ownershipRatio = eligibleOwnershipTotal > 0 ? (s.ownership / eligibleOwnershipTotal) * 100 : 0;
+                            const meetsBoth = countRatio >= countThreshold && ownershipRatio >= ownershipThreshold;
+                            const meetsEither = !meetsBoth && (countRatio >= countThreshold || ownershipRatio >= ownershipThreshold);
+                            const highlight = meetsBoth ? 'border-2 border-green-500' : (meetsEither ? 'border-2 border-yellow-500' : 'border border-gray-200');
+                            return `
+                                <div class="${highlight} rounded-md p-3">
+                                    <div class="font-semibold">${s.label}</div>
+                                    <div class="text-sm text-gray-600">投票戶數：${s.count}（${countRatio.toFixed(2)}%）</div>
+                                    <div class="text-sm text-gray-600">區分權比例：${ownershipRatio.toFixed(2)}%</div>
+                                </div>
+                            `;
+                        }).join('');
+                        const proposerText = t?.proposer?.type === 'resident' ? `住戶(${t?.proposer?.unit || ''})` : '管委會';
+                        const displayName = getTopicDisplayNamePublic(t, idx);
+                        html += `
+                            <div class="bg-white p-4 rounded-lg shadow-sm">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="font-semibold">${displayName}</div>
+                                        <div class="text-sm text-gray-700">主旨：${t.title || ''}</div>
+                                        <div class="text-sm text-gray-700">說明：${t.description || '-'}</div>
+                                        <div class="text-sm text-gray-700">提案人：${proposerText}</div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="text-sm text-gray-600">應投票戶數：${eligibleCount}</div>
+                                        <button class="px-2 py-1 text-xs sm:text-sm bg-red-600 text-white rounded-md opacity-60 cursor-not-allowed" title="僅管理端可結束投票">投票結束</button>
+                                    </div>
+                                </div>
+                                <div class="grid gap-3 mt-3" style="grid-template-columns: repeat(${optionStats.length || 1}, minmax(0, 1fr));">
+                                    ${optsHtml}
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                publicControls.innerHTML = controlsHtml;
+                publicDashboardContent.innerHTML = html;
+                const toggleBtn = publicControls.querySelector('#toggle-public-view-mode');
+                if (toggleBtn) {
+                    toggleBtn.addEventListener('click', () => {
+                        window.publicVoteViewMode = (mode === 'tabs') ? 'list' : 'tabs';
+                        renderPublicVoteDashboard(eventData, residentsData);
+                    });
+                }
+                publicControls.querySelectorAll('.public-topic-tab').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const idx = parseInt(btn.getAttribute('data-idx'), 10) || 0;
+                        window.publicTopicIndex = idx;
+                        renderPublicVoteDashboard(eventData, residentsData);
+                    });
+                });
             }
         }
     </script>

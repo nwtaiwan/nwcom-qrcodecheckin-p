@@ -1,0 +1,119 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 取得目前使用者是否已登入
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // 取得指定 uid 的角色（從 users 集合）
+    function getRole(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.role;
+    }
+
+    // 角色便利函式
+    function isAdmin() {
+      return isSignedIn() && getRole(request.auth.uid) == 'system_admin';
+    }
+
+    function isManager() {
+      return isSignedIn() && (
+        getRole(request.auth.uid) == 'system_admin' ||
+        getRole(request.auth.uid) == 'senior_manager'
+      );
+    }
+
+    function isJuniorManager() {
+      return isSignedIn() && getRole(request.auth.uid) == 'junior_manager';
+    }
+
+    function isStaffOrAbove() {
+      return isSignedIn() && (
+        getRole(request.auth.uid) in ['staff','junior_manager','senior_manager','system_admin']
+      );
+    }
+
+    // 欄位級更新限制
+    function onlyVotesChanged() {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly(['votes']);
+    }
+
+    function onlyCheckinChanged() {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly([
+        'isCheckedIn','checkInTimestamp','checkInMethod','checkInBy'
+      ]);
+    }
+
+    // users 集合：
+    match /users/{userId} {
+      // 讀取：本人或系統管理員可讀
+      allow get, list: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      // 建立：本人第一次登入建立自己的文件，或由系統管理員代為建立
+      allow create: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      // 更新：
+      // - 本人僅能更新 loginSessionId（登入狀態同步）
+      // - 系統管理員可更新任何欄位
+      allow update: if isAdmin() || (
+        isSignedIn() && request.auth.uid == userId &&
+        request.resource.data.diff(resource.data).changedKeys().hasOnly(['loginSessionId'])
+      );
+      // 刪除：僅系統管理員
+      allow delete: if isAdmin();
+    }
+
+    // events 集合（活動）：
+    match /events/{eventId} {
+      // 公開儀表板需求：允許所有人讀取
+      allow get, list: if true;
+      // 建立／刪除：僅高階主管或系統管理員
+      allow create, delete: if isManager();
+      // 更新：
+      // - 管理者可更新任何欄位（包含活動設定）
+      // - 任何已登入人員僅可更新 votes 欄位（投票紀錄）
+      allow update: if isManager() || (isStaffOrAbove() && onlyVotesChanged());
+
+      // topics 子集合（議題）：
+      match /topics/{topicId} {
+        // 讀取：公開
+        allow get, list: if true;
+        // 建立／更新／刪除：僅管理者（senior_manager 或 system_admin）
+        allow create, update, delete: if isManager();
+      }
+
+      // residents 子集合（住戶）：
+      match /residents/{residentId} {
+        // 讀取：公開，以供儀表板統計
+        allow get, list: if true;
+        // 建立：初階主管以上（junior_manager、senior_manager、system_admin）
+        allow create: if isJuniorManager() || isManager();
+        // 更新：
+        // - 初階主管以上可更新任何欄位（住戶資料維護）
+        // - 已登入人員可更新「報到」相關欄位（掃碼／手動報到）
+        allow update: if (isJuniorManager() || isManager()) || (isStaffOrAbove() && onlyCheckinChanged());
+        // 刪除：僅管理者
+        allow delete: if isManager();
+      }
+    }
+
+    // events_archive 集合（已歸檔活動）：
+    match /events_archive/{eventId} {
+      // 讀取：公開（供活動資料庫頁面顯示）
+      allow get, list: if true;
+      // 建立／更新／刪除：僅管理者（用於歸檔與維護）
+      allow create, update, delete: if isManager();
+
+      // topics 子集合（議題，歸檔版）
+      match /topics/{topicId} {
+        allow get, list: if true;
+        allow create, update, delete: if isManager();
+      }
+
+      // residents 子集合（住戶，歸檔版）
+      match /residents/{residentId} {
+        allow get, list: if true;
+        allow create, update, delete: if isManager();
+      }
+    }
+  }
+}
