@@ -26,6 +26,18 @@
             background-color: #f0fdf4; /* green-50 */
         }
         
+        .public-animated-bg {
+            background: linear-gradient(135deg, #fee2e2, #e0f2fe, #f5f3ff, #dcfce7);
+            background-size: 400% 400%;
+            animation: gradientShift 30s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 0%; }
+            50% { background-position: 100% 100%; }
+            100% { background-position: 0% 0%; }
+        }
+
         @media print {
             @page {
                 size: A4;
@@ -760,7 +772,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, addDoc, query, where, onSnapshot, deleteDoc, updateDoc, writeBatch, getDocs, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, initializeFirestore, setLogLevel, doc, getDoc, setDoc, collection, addDoc, query, where, onSnapshot, deleteDoc, updateDoc, writeBatch, getDocs, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Firebase Configuration ---
         const firebaseConfig = {
@@ -778,7 +790,8 @@
         try {
             app = initializeApp(firebaseConfig);
             auth = getAuth(app);
-            db = getFirestore(app);
+            db = initializeFirestore(app, { experimentalForceLongPolling: true, useFetchStreams: false });
+            setLogLevel('error');
         } catch (e) {
             console.error("Firebase initialization failed.", e);
             document.body.innerHTML = `<div class="p-8 text-center bg-red-100 text-red-800"><h1 class="font-bold text-2xl">Firebase 設定錯誤</h1><p class="mt-2">請在程式碼中填入您自己的 Firebase 設定後再試一次。</p></div>`;
@@ -4379,6 +4392,7 @@ const topicCells = currentTopics.map((t, tIdx) => {
         function initializeAppPublic(eventId) {
             document.body.classList.remove('bg-red-600');
             document.body.classList.add('bg-gray-100');
+            document.body.classList.add('public-animated-bg');
             
             const appContainer = document.getElementById('app');
             const publicView = document.getElementById('public-dashboard-view');
@@ -4392,7 +4406,7 @@ const topicCells = currentTopics.map((t, tIdx) => {
             const publicDashboardContent = document.getElementById('public-dashboard-content');
 
             const params = new URLSearchParams(window.location.search);
-            const publicTarget = (params.get('target') || 'checkin').toLowerCase();
+            let publicTarget = (params.get('target') || 'checkin').toLowerCase();
 
             // 建立公開儀表板的切換 URL（保留既有查詢參數，僅調整 target）
             const makePublicUrl = (target) => {
@@ -4400,6 +4414,15 @@ const topicCells = currentTopics.map((t, tIdx) => {
                 newParams.set('view', 'public');
                 newParams.set('target', target);
                 return window.location.pathname + '?' + newParams.toString();
+            };
+
+            const updatePublicUrlAndTarget = (target) => {
+                const newParams = new URLSearchParams(window.location.search);
+                newParams.set('view', 'public');
+                newParams.set('target', target);
+                const newUrl = window.location.pathname + '?' + newParams.toString();
+                history.replaceState(null, '', newUrl);
+                publicTarget = target;
             };
 
             const eventRef = doc(db, ...eventDocPath(eventId));
@@ -4438,24 +4461,22 @@ const topicCells = currentTopics.map((t, tIdx) => {
             function renderPublicDashboard(eventData, residentsData) {
                 // 儀表板切換按鈕（報到/投票）
                 const toggleHtml = `
-                    <div class="flex items-center justify-center w-full gap-2">
-                        <a href="${makePublicUrl('checkin')}" class="px-3 py-1 rounded-md text-sm ${publicTarget === 'checkin' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">報到儀表板</a>
-                        <a href="${makePublicUrl('vote')}" class="px-3 py-1 rounded-md text-sm ${publicTarget === 'vote' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">投票儀表板</a>
+                    <div class="flex flex-nowrap items-center justify-center w-full gap-2">
+                        <a id="public-toggle-checkin" href="${makePublicUrl('checkin')}" class="px-3 py-1 rounded-md text-sm whitespace-nowrap ${publicTarget === 'checkin' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">報到儀表板</a>
+                        <a id="public-toggle-vote" href="${makePublicUrl('vote')}" class="px-3 py-1 rounded-md text-sm whitespace-nowrap ${publicTarget === 'vote' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">投票儀表板</a>
                     </div>
                 `;
                 publicControls.innerHTML = toggleHtml;
+                const chkBtn = publicControls.querySelector('#public-toggle-checkin');
+                const voteBtn = publicControls.querySelector('#public-toggle-vote');
+                if (chkBtn) chkBtn.addEventListener('click', (e) => { e.preventDefault(); updatePublicUrlAndTarget('checkin'); renderPublicDashboard(eventData, residentsData); });
+                if (voteBtn) voteBtn.addEventListener('click', (e) => { e.preventDefault(); updatePublicUrlAndTarget('vote'); renderPublicVoteDashboard(eventData, residentsData); });
 
-                let checkedInCount = 0;
                 let checkedInOwnership = 0;
-
-                residentsData.forEach(r => {
-                    if (r.isCheckedIn) {
-                        checkedInCount++;
-                        checkedInOwnership += parseFloat(r.ownership) || 0;
-                    }
-                });
-                
-                const personRate = residentsData.length > 0 ? parseFloat(((checkedInCount / residentsData.length) * 100).toFixed(2)) : 0;
+                const totalHouseholds = residentsData.reduce((sum, r) => sum + (parseInt(r.householdCount, 10) || 1), 0);
+                const checkedInHouseholds = residentsData.reduce((sum, r) => r.isCheckedIn ? sum + (parseInt(r.householdCount, 10) || 1) : sum, 0);
+                residentsData.forEach(r => { if (r.isCheckedIn) { checkedInOwnership += parseFloat(r.ownership) || 0; } });
+                const personRate = totalHouseholds > 0 ? parseFloat(((checkedInHouseholds / totalHouseholds) * 100).toFixed(2)) : 0;
                 const ownershipRate = parseFloat(checkedInOwnership.toFixed(2));
                 
                 const personQuorumRatio = parseFloat(eventData.personRatio) || 0;
@@ -4465,30 +4486,30 @@ const topicCells = currentTopics.map((t, tIdx) => {
                 const ownershipQuorumReached = ownershipQuorumRatio > 0 && ownershipRate >= ownershipQuorumRatio;
 
                 publicDashboardContent.innerHTML = `
-                    <div class="bg-white p-6 rounded-xl shadow-md flex items-center justify-between">
+                    <div class="bg-white px-6 py-9 rounded-xl shadow-md flex items-center justify-between">
                          <div>
-                             <p class="text-sm font-medium text-gray-500">總住戶數</p>
-                             <p class="text-3xl font-bold text-red-600">${residentsData.length}</p>
+                             <p class="text-2xl font-medium text-gray-500">總住戶數</p>
+                             <p class="text-6xl font-bold text-red-600">${totalHouseholds}</p>
                          </div>
                     </div>
-                    <div class="bg-white p-6 rounded-xl shadow-md flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-500">已報到戶數</p>
-                            <p class="text-3xl font-bold text-green-600">${checkedInCount}</p>
-                        </div>
+                    <div class="bg-white px-6 py-9 rounded-xl shadow-md flex items-center justify-between">
+                         <div>
+                             <p class="text-2xl font-medium text-gray-500">已報到戶數</p>
+                             <p class="text-6xl font-bold text-green-600">${checkedInHouseholds}</p>
+                         </div>
                     </div>
-                    <div class="bg-white p-6 rounded-xl shadow-md flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-500">戶數報到率 <span class="text-xs">(目標: ${personQuorumRatio}%)</span></p>
-                            <p class="text-3xl font-bold text-orange-600">${personRate}%</p>
-                        </div>
+                    <div class="bg-white px-6 py-9 rounded-xl shadow-md flex items-center justify-between">
+                         <div>
+                             <p class="text-2xl font-medium text-gray-500">戶數報到率 <span class="text-xs">(目標: ${personQuorumRatio}%)</span></p>
+                             <p class="text-6xl font-bold text-orange-600">${personRate}%</p>
+                         </div>
                         <span class="${personQuorumReached ? '' : 'hidden'} text-green-600 font-bold text-lg">已達法定開會人數</span>
                     </div>
-                    <div class="bg-white p-6 rounded-xl shadow-md flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-500">區分權報到率 <span class="text-xs">(目標: ${ownershipQuorumRatio}%)</span></p>
-                            <p class="text-3xl font-bold text-blue-600">${ownershipRate}%</p>
-                        </div>
+                    <div class="bg-white px-6 py-9 rounded-xl shadow-md flex items-center justify-between">
+                         <div>
+                             <p class="text-2xl font-medium text-gray-500">區分權報到率 <span class="text-xs">(目標: ${ownershipQuorumRatio}%)</span></p>
+                             <p class="text-6xl font-bold text-blue-600">${ownershipRate}%</p>
+                         </div>
                         <span class="${ownershipQuorumReached ? '' : 'hidden'} text-green-600 font-bold text-lg">已達法定開會區分權比例</span>
                     </div>
                 `;
@@ -4497,9 +4518,9 @@ const topicCells = currentTopics.map((t, tIdx) => {
             function renderPublicVoteDashboard(eventData, residentsData) {
                 // 儀表板切換按鈕（報到/投票）
                 const toggleHtml = `
-                    <div class="flex items-center gap-2">
-                        <a href="${makePublicUrl('checkin')}" class="px-3 py-1 rounded-md text-sm ${publicTarget === 'checkin' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">報到儀表板</a>
-                        <a href="${makePublicUrl('vote')}" class="px-3 py-1 rounded-md text-sm ${publicTarget === 'vote' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">投票儀表板</a>
+                    <div class="flex flex-nowrap items-center justify-center w-full gap-2">
+                        <a id="public-toggle-checkin" href="${makePublicUrl('checkin')}" class="px-3 py-1 rounded-md text-sm whitespace-nowrap ${publicTarget === 'checkin' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">報到儀表板</a>
+                        <a id="public-toggle-vote" href="${makePublicUrl('vote')}" class="px-3 py-1 rounded-md text-sm whitespace-nowrap ${publicTarget === 'vote' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">投票儀表板</a>
                     </div>
                 `;
                 const topics = Array.isArray(eventData.topics) ? eventData.topics : [];
@@ -4537,10 +4558,12 @@ const topicCells = currentTopics.map((t, tIdx) => {
                         return `<button class="public-topic-tab px-3 py-1 rounded-md text-sm ${active}" data-idx="${idx}">${getTopicDisplayNamePublic(t, idx)}</button>`;
                     }).join(' ');
                     controlsHtml = `
-                        <div class="flex items-center justify-between w-full">
-                            ${toggleHtml}
-                            <div class="flex flex-wrap gap-2">${tabsHtml}</div>
-                            <button id="toggle-public-view-mode" class="px-2 py-1 text-xs sm:text-sm bg-gray-200 hover:bg-gray-300 rounded">切換為列表</button>
+                        <div class="w-full space-y-2">
+                            <div class="relative w-full h-9">
+                                <div class="absolute left-1/2 -translate-x-1/2">${toggleHtml}</div>
+                                <button id="toggle-public-view-mode" class="absolute right-0 px-2 py-1 text-xs sm:text-sm bg-gray-200 hover:bg-gray-300 rounded">切換為列表</button>
+                            </div>
+                            <div class="flex flex-wrap justify-center gap-2">${tabsHtml}</div>
                         </div>
                     `;
 
@@ -4592,22 +4615,20 @@ const topicCells = currentTopics.map((t, tIdx) => {
                             <div class="text-sm text-gray-700 mb-1">主旨：${t.title || ''}</div>
                             <div class="text-sm text-gray-700 mb-1">說明：${t.description || '-'}</div>
                             <div class="text-sm text-gray-700 mb-3">提案人：${proposerText}</div>
-                            <div class="text-sm text-gray-600">應投票戶數：${eligibleCount}｜已投票：${votedEligibleHouseholds}｜未投票：${notVotedEligibleHouseholds}</div>
-                        <div class="grid gap-3 mt-3" style="grid-template-columns: repeat(${columns}, minmax(0, 1fr));">
-                            ${optsHtml}
-                        </div>
+                            <div class="text-sm text-gray-600">已報到應投票戶數：${eligibleCount}｜已投票：${votedEligibleHouseholds}｜未投票：${notVotedEligibleHouseholds}</div>
+                            <div class="grid gap-3 mt-3" style="grid-template-columns: repeat(${columns}, minmax(0, 1fr));">
+                                ${optsHtml}
+                            </div>
                         </div>
                     `;
                 } else {
-                    // List mode: keep two columns on md screens for multiple cards
-                    publicDashboardContent.className = 'grid grid-cols-1 md:grid-cols-2 gap-6';
+                    // List mode: single column for one topic per row
+                    publicDashboardContent.className = 'grid grid-cols-1 gap-6';
                     // 列表模式：原本的全部議題一併呈現，加入切換控制與議題資訊
                     controlsHtml = `
-                        <div class="flex items-center justify-between w-full">
-                            ${toggleHtml}
-                            <div class="flex justify-end w-full">
-                                <button id="toggle-public-view-mode" class="px-2 py-1 text-xs sm:text-sm bg-gray-200 hover:bg-gray-300 rounded">切換為分頁</button>
-                            </div>
+                        <div class="relative w-full h-9">
+                            <div class="absolute left-1/2 -translate-x-1/2">${toggleHtml}</div>
+                            <button id="toggle-public-view-mode" class="absolute right-0 px-2 py-1 text-xs sm:text-sm bg-gray-200 hover:bg-gray-300 rounded">切換為分頁</button>
                         </div>
                     `;
                     topics.forEach((t, idx) => {
@@ -4655,13 +4676,9 @@ const topicCells = currentTopics.map((t, tIdx) => {
                                 <div class="flex items-center justify-between">
                                     <div>
                                         <div class="font-semibold">${displayName}</div>
-                                        <div class="text-sm text-gray-700">主旨：${t.title || ''}</div>
-                                        <div class="text-sm text-gray-700">說明：${t.description || '-'}</div>
-                                        <div class="text-sm text-gray-700">提案人：${proposerText}</div>
                                     </div>
                                     <div class="flex items-center gap-2">
-                                        <div class="text-sm text-gray-600">應投票戶數：${eligibleCount}｜已投票：${votedEligibleHouseholds}｜未投票：${notVotedEligibleHouseholds}</div>
-                                        <button class="px-2 py-1 text-xs sm:text-sm bg-red-600 text-white rounded-md opacity-60 cursor-not-allowed" title="僅管理端可結束投票">投票結束</button>
+                                        <div class="text-sm text-gray-600">已報到應投票戶數：${eligibleCount}｜已投票：${votedEligibleHouseholds}｜未投票：${notVotedEligibleHouseholds}</div>
                                     </div>
                                 </div>
                                 <div class="grid gap-3 mt-3" style="grid-template-columns: repeat(${optionStats.length || 1}, minmax(0, 1fr));">
@@ -4673,6 +4690,10 @@ const topicCells = currentTopics.map((t, tIdx) => {
                 }
 
                 publicControls.innerHTML = controlsHtml;
+                const chkBtn2 = publicControls.querySelector('#public-toggle-checkin');
+                const voteBtn2 = publicControls.querySelector('#public-toggle-vote');
+                if (chkBtn2) chkBtn2.addEventListener('click', (e) => { e.preventDefault(); updatePublicUrlAndTarget('checkin'); renderPublicDashboard(eventData, residentsData); });
+                if (voteBtn2) voteBtn2.addEventListener('click', (e) => { e.preventDefault(); updatePublicUrlAndTarget('vote'); renderPublicVoteDashboard(eventData, residentsData); });
                 publicDashboardContent.innerHTML = html;
                 const toggleBtn = publicControls.querySelector('#toggle-public-view-mode');
                 if (toggleBtn) {
