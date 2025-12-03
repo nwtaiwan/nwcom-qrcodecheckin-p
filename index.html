@@ -4602,9 +4602,9 @@ const topicCells = currentTopics.map((t, tIdx) => {
                         const highlight = meetsBoth ? 'border-2 border-green-500' : (meetsEither ? 'border-2 border-yellow-500' : 'border border-gray-200');
                         return `
                             <div class="${highlight} rounded-md p-3">
-                                <div class="font-semibold">${s.label}</div>
-                                <div class="text-sm text-gray-600">投票戶數：${s.count}（${countRatio.toFixed(2)}%）</div>
-                                <div class="text-sm text-gray-600">區分權比例：${ownershipRatio.toFixed(2)}%</div>
+                                <div class="font-semibold text-2xl">${s.label}</div>
+                                <div class="text-2xl text-gray-600">投票戶數：${s.count}（${countRatio.toFixed(2)}%）</div>
+                                <div class="text-2xl text-gray-600">區分權比例：${ownershipRatio.toFixed(2)}%</div>
                             </div>
                         `;
                     }).join('');
@@ -4613,11 +4613,11 @@ const topicCells = currentTopics.map((t, tIdx) => {
                     const displayName = getTopicDisplayNamePublic(t, selectedIdx);
                     html = `
                         <div class="bg-white p-4 rounded-lg shadow-sm">
-                            <div class="font-semibold mb-2">議題名稱：${displayName}</div>
-                            <div class="text-sm text-gray-700 mb-1">主旨：${t.title || ''}</div>
-                            <div class="text-sm text-gray-700 mb-1">說明：${t.description || '-'}</div>
-                            <div class="text-sm text-gray-700 mb-3">提案人：${proposerText}</div>
-                            <div class="text-sm text-gray-600">已報到應投票戶數：${eligibleCount}｜已投票：${votedEligibleHouseholds}｜未投票：${notVotedEligibleHouseholds}</div>
+                            <div class="font-semibold text-3xl mb-2">${displayName}</div>
+                            <div class="text-2xl text-gray-700 mb-1">主旨：${t.title || ''}</div>
+                            <div class="text-2xl text-gray-700 mb-1">說明：${t.description || '-'}</div>
+                            <div class="text-2xl text-gray-700 mb-3">提案人：${proposerText}</div>
+                            <div class="text-2xl text-gray-600">已報到應投票戶數：${eligibleCount}｜已投票：${votedEligibleHouseholds}｜未投票：${notVotedEligibleHouseholds}</div>
                             <div class="grid gap-3 mt-3" style="grid-template-columns: repeat(${columns}, minmax(0, 1fr));">
                                 ${optsHtml}
                             </div>
@@ -4665,9 +4665,9 @@ const topicCells = currentTopics.map((t, tIdx) => {
                             const highlight = meetsBoth ? 'border-2 border-green-500' : (meetsEither ? 'border-2 border-yellow-500' : 'border border-gray-200');
                             return `
                                 <div class="${highlight} rounded-md p-3">
-                                    <div class="font-semibold">${s.label}</div>
-                                    <div class="text-sm text-gray-600">投票戶數：${s.count}（${countRatio.toFixed(2)}%）</div>
-                                    <div class="text-sm text-gray-600">區分權比例：${ownershipRatio.toFixed(2)}%</div>
+                                    <div class="font-semibold text-2xl">${s.label}</div>
+                                    <div class="text-2xl text-gray-600">投票戶數：${s.count}（${countRatio.toFixed(2)}%）</div>
+                                    <div class="text-2xl text-gray-600">區分權比例：${ownershipRatio.toFixed(2)}%</div>
                                 </div>
                             `;
                         }).join('');
@@ -4677,10 +4677,10 @@ const topicCells = currentTopics.map((t, tIdx) => {
                             <div class="bg-white p-4 rounded-lg shadow-sm">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <div class="font-semibold">${displayName}</div>
+                                        <div class="font-semibold text-3xl">${displayName}</div>
                                     </div>
                                     <div class="flex items-center gap-2">
-                                        <div class="text-sm text-gray-600">已報到應投票戶數：${eligibleCount}｜已投票：${votedEligibleHouseholds}｜未投票：${notVotedEligibleHouseholds}</div>
+                                        <div class="text-2xl text-gray-600">已報到應投票戶數：${eligibleCount}｜已投票：${votedEligibleHouseholds}｜未投票：${notVotedEligibleHouseholds}</div>
                                     </div>
                                 </div>
                                 <div class="grid gap-3 mt-3" style="grid-template-columns: repeat(${optionStats.length || 1}, minmax(0, 1fr));">
