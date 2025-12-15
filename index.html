@@ -375,6 +375,7 @@
                                         <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 5%;">狀態</th>
                                         <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 5%;">序號</th>
                                         <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 10%;">QR Code碼</th>
+                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 15%;">操作</th>
                                         <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 10%;">戶號</th>
                                         <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 10%;">姓名</th>
                                         <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 20%;">住址</th>
@@ -382,7 +383,6 @@
                                         <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 8%;">戶數</th>
                                         <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 10%;">區分權(%)</th>
                                         <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 7%;">QR Code</th>
-                                        <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 15%;">操作</th>
                                     </tr>
                                 </thead>
                                 <tbody id="residents-list" class="bg-white divide-y divide-gray-200"></tbody>
@@ -1038,11 +1038,6 @@ const userDocPath = (userId) => ["users", userId];
                     const userCredential = await signInWithEmailAndPassword(auth, emailForFirebase, password);
                     const user = userCredential.user;
                     
-                    const sessionId = crypto.randomUUID();
-                    localStorage.setItem('loginSessionId', sessionId);
-                    const userRef = doc(db, 'users', user.uid);
-                    await updateDoc(userRef, { loginSessionId: sessionId });
-
                     if (rememberMeCheckbox.checked) {
                         localStorage.setItem('qrSystemUsername', username);
                     } else {
@@ -1114,14 +1109,6 @@ const userDocPath = (userId) => ["users", userId];
             });
 
             const handleLogout = async () => {
-                if (currentUser && currentUser.uid) {
-                    const userRef = doc(db, 'users', currentUser.uid);
-                    try {
-                        await updateDoc(userRef, { loginSessionId: null });
-                    } catch (error) {
-                        console.error("Failed to clear session on logout:", error);
-                    }
-                }
                 localStorage.removeItem('loginSessionId');
                 signOut(auth);
             };
@@ -1218,18 +1205,6 @@ const userDocPath = (userId) => ["users", userId];
                        unsubscribeUsers = listenToUsers();
                     }
                     
-                    const localSessionId = localStorage.getItem('loginSessionId');
-                    unsubscribeSession = onSnapshot(doc(db, 'users', user.uid), (userDoc) => {
-                        if (userDoc.exists()) {
-                            const remoteSessionId = userDoc.data().loginSessionId;
-                            if (localSessionId && remoteSessionId && localSessionId !== remoteSessionId) {
-                                unsubscribeSession(); 
-                                showCustomAlert('您的帳號已在另一台裝置登入，此裝置將自動登出。', '強制登出');
-                                handleLogout();
-                            }
-                        }
-                    });
-
                     document.body.classList.remove('bg-red-600');
                     document.body.classList.add('bg-gray-50');
                     userDisplay.textContent = `${currentUser.name || ''}`;
@@ -2678,54 +2653,126 @@ const topicCells = currentTopics.map((t, tIdx) => {
                 }
             });
 
+            function renderAllResidents(tbody) {
+                tbody.innerHTML = '';
+                if (allResidentsForSelectedEvent.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-gray-500">請新增住戶</td></tr>`;
+                    return;
+                }
+                
+                allResidentsForSelectedEvent.forEach((resident, index) => {
+                    const tr = document.createElement('tr');
+                    tr.id = `resident-row-${resident.id}`;
+                    tr.className = resident.isCheckedIn ? 'checked-in-row' : '';
+                    
+                    const manualCheckinBtnClass = resident.isCheckedIn ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400 hover:bg-gray-500';
+                    const manualCheckinBtnText = resident.isCheckedIn ? '取消報到' : '手動報到';
+                    const qrValue = resident.qrcodeValue || resident.id;
+
+                    tr.innerHTML = `
+                        <td class="px-2 py-2 whitespace-nowrap text-center">${resident.isCheckedIn ? '✔️' : '❌'}</td>
+                        <td class="px-2 py-2 whitespace-nowrap text-center">${index + 1}</td>
+                        <td class="px-2 py-2 whitespace-nowrap truncate">${resident.qrcodeValue || ''}</td>
+                        <td class="px-2 py-2 whitespace-nowrap text-sm font-medium">
+                            <button data-id="${resident.id}" class="manual-checkin-btn text-white text-xs py-1 px-2 rounded ${manualCheckinBtnClass}">${manualCheckinBtnText}</button>
+                            <button data-id="${resident.id}" class="edit-btn text-blue-600 hover:text-blue-900 ml-2">編輯</button>
+                            <button data-id="${resident.id}" class="delete-btn text-red-600 hover:text-red-900 ml-2">刪除</button>
+                        </td>
+                        <td class="px-2 py-2 whitespace-nowrap truncate">${resident.unit}</td>
+                        <td class="px-2 py-2 whitespace-nowrap truncate">${resident.name}</td>
+                        <td class="px-2 py-2 whitespace-nowrap truncate">${resident.address || ''}</td>
+                        <td class="px-2 py-2 whitespace-nowrap">${resident.area || 0}</td>
+                        <td class="px-2 py-2 whitespace-nowrap">${resident.householdCount || 1}</td>
+                        <td class="px-2 py-2 whitespace-nowrap">${resident.ownership || 0}%</td>
+                        <td class="px-2 py-2"><div id="qr-${resident.id}" class="mx-auto"></div></td>
+                    `;
+                    tbody.appendChild(tr);
+                    new QRCode(document.getElementById(`qr-${resident.id}`), { text: qrValue, width: 48, height: 48 });
+                });
+            }
+
+            function updateResidentRow(resident, index) {
+                const tr = document.getElementById(`resident-row-${resident.id}`);
+                if (!tr) return;
+
+                tr.className = resident.isCheckedIn ? 'checked-in-row' : '';
+                
+                // Update specific cells
+                tr.children[0].textContent = resident.isCheckedIn ? '✔️' : '❌';
+                tr.children[1].textContent = index + 1;
+                tr.children[2].textContent = resident.qrcodeValue || '';
+                
+                // Update Action Button
+                const btn = tr.querySelector('.manual-checkin-btn');
+                if (btn) {
+                    const manualCheckinBtnClass = resident.isCheckedIn ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400 hover:bg-gray-500';
+                    const manualCheckinBtnText = resident.isCheckedIn ? '取消報到' : '手動報到';
+                    btn.className = `manual-checkin-btn text-white text-xs py-1 px-2 rounded ${manualCheckinBtnClass}`;
+                    btn.textContent = manualCheckinBtnText;
+                    btn.disabled = false;
+                }
+
+                // Update Data fields
+                tr.children[4].textContent = resident.unit;
+                tr.children[5].textContent = resident.name;
+                tr.children[6].textContent = resident.address || '';
+                tr.children[7].textContent = resident.area || 0;
+                tr.children[8].textContent = resident.householdCount || 1;
+                tr.children[9].textContent = `${resident.ownership || 0}%`;
+                
+                // Regenerate QR Code (fast for single row)
+                const qrContainer = tr.children[10].querySelector('div');
+                if (qrContainer) {
+                    qrContainer.innerHTML = '';
+                    new QRCode(qrContainer, { text: resident.qrcodeValue || resident.id, width: 48, height: 48 });
+                }
+            }
+
             function listenToResidents(eventId) {
                 const q = query(collection(db, ...residentsCollectionPath(eventId)));
                 return onSnapshot(q, (querySnapshot) => {
                     const residentsListTbody = document.getElementById('residents-list');
-                    residentsListTbody.innerHTML = '';
-                    allResidentsForSelectedEvent = [];
-                    querySnapshot.forEach((doc) => allResidentsForSelectedEvent.push({ id: doc.id, ...doc.data() }));
+                    const changes = querySnapshot.docChanges();
                     
-                    // Sort by creation time to respect CSV import order
-                    allResidentsForSelectedEvent.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-                    
-                    allResidentsForSelectedEvent.forEach((resident, index) => {
-                        const tr = document.createElement('tr');
-                        tr.className = resident.isCheckedIn ? 'checked-in-row' : '';
-                        
-                        const manualCheckinBtnClass = resident.isCheckedIn ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400 hover:bg-gray-500';
-                        const manualCheckinBtnText = resident.isCheckedIn ? '取消報到' : '手動報到';
-                        const qrValue = resident.qrcodeValue || resident.id;
-
-                        tr.innerHTML = `
-                            <td class="px-2 py-2 whitespace-nowrap text-center">${resident.isCheckedIn ? '✔️' : '❌'}</td>
-                            <td class="px-2 py-2 whitespace-nowrap text-center">${index + 1}</td>
-                            <td class="px-2 py-2 whitespace-nowrap truncate">${resident.qrcodeValue || ''}</td>
-                            <td class="px-2 py-2 whitespace-nowrap truncate">${resident.unit}</td>
-                            <td class="px-2 py-2 whitespace-nowrap truncate">${resident.name}</td>
-                            <td class="px-2 py-2 whitespace-nowrap truncate">${resident.address || ''}</td>
-                            <td class="px-2 py-2 whitespace-nowrap">${resident.area || 0}</td>
-                            <td class="px-2 py-2 whitespace-nowrap">${resident.householdCount || 1}</td>
-                            <td class="px-2 py-2 whitespace-nowrap">${resident.ownership || 0}%</td>
-                            <td class="px-2 py-2"><div id="qr-${resident.id}" class="mx-auto"></div></td>
-                            <td class="px-2 py-2 whitespace-nowrap text-sm font-medium">
-                                <button data-id="${resident.id}" class="manual-checkin-btn text-white text-xs py-1 px-2 rounded ${manualCheckinBtnClass}">${manualCheckinBtnText}</button>
-                                <button data-id="${resident.id}" class="edit-btn text-blue-600 hover:text-blue-900 ml-2">編輯</button>
-                                <button data-id="${resident.id}" class="delete-btn text-red-600 hover:text-red-900 ml-2">刪除</button>
-                            </td>
-                        `;
-                        residentsListTbody.appendChild(tr);
-                        new QRCode(document.getElementById(`qr-${resident.id}`), { text: qrValue, width: 48, height: 48 });
+                    // Update local cache
+                    let needsSort = false;
+                    changes.forEach(change => {
+                        const data = { id: change.doc.id, ...change.doc.data() };
+                        if (change.type === 'added') {
+                            allResidentsForSelectedEvent.push(data);
+                            needsSort = true;
+                        } else if (change.type === 'modified') {
+                            const idx = allResidentsForSelectedEvent.findIndex(r => r.id === data.id);
+                            if (idx > -1) allResidentsForSelectedEvent[idx] = data;
+                        } else if (change.type === 'removed') {
+                            const idx = allResidentsForSelectedEvent.findIndex(r => r.id === data.id);
+                            if (idx > -1) allResidentsForSelectedEvent.splice(idx, 1);
+                        }
                     });
-
-                    if (allResidentsForSelectedEvent.length === 0) {
-                        residentsListTbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-gray-500">請新增住戶</td></tr>`;
+                    
+                    if (needsSort) {
+                        allResidentsForSelectedEvent.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
                     }
 
-                    // Refresh topics table when residents change
-                    renderTopicsTable();
-
+                    // Decide render strategy
+                    const hasStructuralChanges = changes.some(c => c.type === 'added' || c.type === 'removed');
+                    
+                    if (residentsListTbody.children.length === 0 || hasStructuralChanges) {
+                         renderAllResidents(residentsListTbody);
+                    } else {
+                         changes.forEach(change => {
+                             if (change.type === 'modified') {
+                                 const resident = allResidentsForSelectedEvent.find(r => r.id === change.doc.id);
+                                 if (resident) {
+                                     const index = allResidentsForSelectedEvent.indexOf(resident);
+                                     updateResidentRow(resident, index);
+                                 }
+                             }
+                         });
+                    }
+                    
                     updateDashboardCalculations();
+                    renderTopicsTable();
                 });
             }
 
@@ -2955,11 +3002,29 @@ const topicCells = currentTopics.map((t, tIdx) => {
                         const residentRef = doc(db, ...residentDocPath(selectedEventId, residentId));
                         if (resident.isCheckedIn) {
                             if (await showCustomConfirm(`確定要取消 ${resident.unit} ${resident.name} 的報到嗎？`)) {
-                                await updateDoc(residentRef, { isCheckedIn: false, checkInTimestamp: null, checkInMethod: null, checkInBy: null });
+                                // Optimistic UI update
+                                target.textContent = '取消中...';
+                                target.disabled = true;
+                                updateDoc(residentRef, { isCheckedIn: false, checkInTimestamp: null, checkInMethod: null, checkInBy: null })
+                                    .catch(err => {
+                                        console.error(err);
+                                        target.textContent = '取消報到';
+                                        target.disabled = false;
+                                        showCustomAlert('取消報到失敗，請重試');
+                                    });
                             }
                         } else {
                             if (await showCustomConfirm(`確定要為 ${resident.unit} ${resident.name} 手動報到嗎？`)) {
-                                await updateDoc(residentRef, { isCheckedIn: true, checkInTimestamp: new Date(), checkInMethod: '手動', checkInBy: currentUser.name });
+                                // Optimistic UI update
+                                target.textContent = '報到中...';
+                                target.disabled = true;
+                                updateDoc(residentRef, { isCheckedIn: true, checkInTimestamp: new Date(), checkInMethod: '手動', checkInBy: currentUser.name })
+                                    .catch(err => {
+                                        console.error(err);
+                                        target.textContent = '手動報到';
+                                        target.disabled = false;
+                                        showCustomAlert('報到失敗，請重試');
+                                    });
                             }
                         }
                     }
@@ -3014,6 +3079,9 @@ const topicCells = currentTopics.map((t, tIdx) => {
             });
 
             startScanBtn.addEventListener('click', async () => {
+                // iOS 音頻解鎖：播放一個空的語音以啟動語音合成引擎
+                speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+
                 if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
                 const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1, rememberLastUsedCamera: true };
                 if (!scannerCamerasLoaded) await populateCamerasForScanner();
@@ -3284,6 +3352,9 @@ const topicCells = currentTopics.map((t, tIdx) => {
             });
 
             startScanVoteBtn.addEventListener('click', async () => {
+                // iOS 音頻解鎖
+                speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+
                 const config = { fps: 10, qrbox: { width: 250, height: 250 }, rememberLastUsedCamera: true };
                 try {
                     if (!html5QrCodeVote) html5QrCodeVote = new Html5Qrcode('vote-reader');
@@ -3462,28 +3533,42 @@ const topicCells = currentTopics.map((t, tIdx) => {
 
                 const scannerStatus = document.getElementById('scanner-status');
                 
-                const q = query(collection(db, ...residentsCollectionPath(selectedEventId)), where("qrcodeValue", "==", decodedText));
-                const querySnapshot = await getDocs(q);
+                // 優化：改用本地資料搜尋，取代 Firestore 查詢，提升速度
+                const resident = allResidentsForSelectedEvent.find(r => r.qrcodeValue === decodedText);
 
-                if (!querySnapshot.empty) {
-                    const residentDoc = querySnapshot.docs[0];
-                    const resident = residentDoc.data();
-                    const residentRef = residentDoc.ref;
+                if (resident) {
+                    const residentRef = doc(db, ...residentsCollectionPath(selectedEventId), resident.id);
 
                     if (resident.isCheckedIn) {
-                        scannerStatus.textContent = `重複報到: ${resident.unit} ${resident.name} 已於 ${new Date(resident.checkInTimestamp.seconds * 1000).toLocaleTimeString('zh-TW')} 報到。`;
+                        let timeStr = '';
+                        try {
+                            if (resident.checkInTimestamp && resident.checkInTimestamp.seconds) {
+                                timeStr = new Date(resident.checkInTimestamp.seconds * 1000).toLocaleTimeString('zh-TW');
+                            } else {
+                                timeStr = '稍早';
+                            }
+                        } catch (e) { timeStr = '未知時間'; }
+                        
+                        scannerStatus.textContent = `重複報到: ${resident.unit} ${resident.name} 已於 ${timeStr} 報到。`;
                         scannerStatus.className = 'mt-4 text-center font-semibold p-3 rounded-md bg-yellow-100 text-yellow-800';
                         speak("重複掃碼");
                     } else {
-                        await updateDoc(residentRef, { 
-                            isCheckedIn: true, 
-                            checkInTimestamp: new Date(),
-                            checkInMethod: method,
-                            checkInBy: currentUser.name
-                        });
-                        scannerStatus.textContent = `報到成功: ${resident.unit} ${resident.name}`;
-                        scannerStatus.className = 'mt-4 text-center font-semibold p-3 rounded-md bg-green-100 text-green-800';
-                        speak("報到成功");
+                        try {
+                            await updateDoc(residentRef, { 
+                                isCheckedIn: true, 
+                                checkInTimestamp: new Date(),
+                                checkInMethod: method,
+                                checkInBy: currentUser.name
+                            });
+                            scannerStatus.textContent = `報到成功: ${resident.unit} ${resident.name}`;
+                            scannerStatus.className = 'mt-4 text-center font-semibold p-3 rounded-md bg-green-100 text-green-800';
+                            speak("報到成功");
+                        } catch (err) {
+                            console.error(err);
+                            scannerStatus.textContent = `報到失敗：連線錯誤`;
+                            scannerStatus.className = 'mt-4 text-center font-semibold p-3 rounded-md bg-red-100 text-red-700';
+                            speak("報到失敗");
+                        }
                     }
                 } else {
                     scannerStatus.textContent = '無效的 QR Code，找不到對應的住戶資料。';
@@ -4393,11 +4478,14 @@ const topicCells = currentTopics.map((t, tIdx) => {
             document.body.classList.remove('bg-red-600');
             document.body.classList.add('bg-gray-100');
             document.body.classList.add('public-animated-bg');
+            // document.body.style.overflow = 'hidden'; // Removed to allow scrolling if content overflows
             
             const appContainer = document.getElementById('app');
             const publicView = document.getElementById('public-dashboard-view');
             appContainer.style.display = 'none';
             publicView.classList.remove('hidden');
+            // Make main container full height and flex column, h-screen forces it to viewport height
+            publicView.className = 'max-w-7xl mx-auto p-4 md:p-6 h-screen flex flex-col';
 
             const publicHeader = document.getElementById('public-header');
             const publicCommunityName = document.getElementById('public-community-name-display');
@@ -4434,9 +4522,9 @@ const topicCells = currentTopics.map((t, tIdx) => {
                     publicEventTitle.textContent = (data.eventName && String(data.eventName).trim()) ? data.eventName : defaultTitle;
 
                     if (publicTarget === 'vote') {
-                        publicHeader.className = 'text-center mb-6 pb-4 bg-indigo-700 text-white rounded-lg shadow';
+                        publicHeader.className = 'text-center mb-6 pb-4 bg-red-700 text-white rounded-lg shadow';
                         publicCommunityName.className = 'text-4xl font-extrabold text-white';
-                        publicEventTitle.className = 'text-2xl text-indigo-100 mt-1';
+                        publicEventTitle.className = 'text-2xl text-red-100 mt-1';
                     } else {
                         publicHeader.className = 'text-center mb-6 pb-4 bg-red-700 text-white rounded-lg shadow';
                         publicCommunityName.className = 'text-4xl font-extrabold text-white';
@@ -4467,8 +4555,12 @@ const topicCells = currentTopics.map((t, tIdx) => {
                     </div>
                 `;
                 publicControls.innerHTML = toggleHtml;
-                // 確保報到儀表板為兩欄（md 以上）
-                publicDashboardContent.className = 'grid grid-cols-1 md:grid-cols-2 gap-6';
+                document.body.style.overflow = 'hidden'; // Ensure no body scroll if content fits
+                
+                // 確保報到儀表板為兩欄（md 以上），並填滿剩餘空間，高度自適應
+                // grid-rows-4 for mobile (stack vertically filling height)
+                // md:grid-rows-2 for desktop (2x2 grid filling height)
+                publicDashboardContent.className = 'grid grid-rows-4 md:grid-rows-2 grid-cols-1 md:grid-cols-2 gap-4 flex-grow h-full overflow-hidden';
                 const chkBtn = publicControls.querySelector('#public-toggle-checkin');
                 const voteBtn = publicControls.querySelector('#public-toggle-vote');
                 if (chkBtn) chkBtn.addEventListener('click', (e) => { e.preventDefault(); updatePublicUrlAndTarget('checkin'); renderPublicDashboard(eventData, residentsData); });
@@ -4488,31 +4580,31 @@ const topicCells = currentTopics.map((t, tIdx) => {
                 const ownershipQuorumReached = ownershipQuorumRatio > 0 && ownershipRate >= ownershipQuorumRatio;
 
                 publicDashboardContent.innerHTML = `
-                    <div class="bg-white px-6 py-9 rounded-xl shadow-md flex items-center justify-between">
+                    <div class="bg-white px-6 py-6 rounded-xl shadow-md flex flex-col items-start justify-center h-full text-left">
                          <div>
                              <p class="text-2xl font-medium text-gray-500">總住戶數</p>
-                             <p class="text-6xl font-bold text-red-600">${totalHouseholds}</p>
+                             <p class="text-5xl font-bold text-red-600">${totalHouseholds}</p>
                          </div>
                     </div>
-                    <div class="bg-white px-6 py-9 rounded-xl shadow-md flex items-center justify-between">
+                    <div class="bg-white px-6 py-6 rounded-xl shadow-md flex flex-col items-start justify-center h-full text-left">
                          <div>
                              <p class="text-2xl font-medium text-gray-500">已報到戶數</p>
-                             <p class="text-6xl font-bold text-green-600">${checkedInHouseholds}</p>
+                             <p class="text-5xl font-bold text-green-600">${checkedInHouseholds}</p>
                          </div>
                     </div>
-                    <div class="bg-white px-6 py-9 rounded-xl shadow-md flex items-center justify-between">
+                    <div class="bg-white px-6 py-6 rounded-xl shadow-md flex flex-col items-start justify-center h-full text-left">
                          <div>
                              <p class="text-2xl font-medium text-gray-500">戶數報到率 <span class="text-xs">(目標: ${personQuorumRatio}%)</span></p>
-                             <p class="text-6xl font-bold text-orange-600">${personRate}%</p>
+                             <p class="text-5xl font-bold text-orange-600">${personRate}%</p>
                          </div>
-                        <span class="${personQuorumReached ? '' : 'hidden'} text-green-600 font-bold text-lg">已達法定開會人數</span>
+                        <span class="${personQuorumReached ? '' : 'hidden'} text-green-600 font-bold text-lg mt-2">已達法定開會人數</span>
                     </div>
-                    <div class="bg-white px-6 py-9 rounded-xl shadow-md flex items-center justify-between">
+                    <div class="bg-white px-6 py-6 rounded-xl shadow-md flex flex-col items-start justify-center h-full text-left">
                          <div>
                              <p class="text-2xl font-medium text-gray-500">區分權報到率 <span class="text-xs">(目標: ${ownershipQuorumRatio}%)</span></p>
-                             <p class="text-6xl font-bold text-blue-600">${ownershipRate}%</p>
+                             <p class="text-5xl font-bold text-blue-600">${ownershipRate}%</p>
                          </div>
-                        <span class="${ownershipQuorumReached ? '' : 'hidden'} text-green-600 font-bold text-lg">已達法定開會區分權比例</span>
+                        <span class="${ownershipQuorumReached ? '' : 'hidden'} text-green-600 font-bold text-lg mt-2">已達法定開會區分權比例</span>
                     </div>
                 `;
             }
@@ -4553,7 +4645,7 @@ const topicCells = currentTopics.map((t, tIdx) => {
 
                 if (mode === 'tabs') {
                     // Tabs mode: make content container full width (single column)
-                    publicDashboardContent.className = 'grid grid-cols-1 gap-6';
+                    publicDashboardContent.className = 'grid grid-cols-1 gap-6 flex-grow overflow-y-auto min-h-0';
                     const selectedIdx = Math.min(Math.max(parseInt(window.publicTopicIndex || 0, 10), 0), topics.length - 1);
                     const tabsHtml = topics.map((t, idx) => {
                         const active = idx === selectedIdx ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700';
@@ -4602,9 +4694,15 @@ const topicCells = currentTopics.map((t, tIdx) => {
                         const highlight = meetsBoth ? 'border-2 border-green-500' : (meetsEither ? 'border-2 border-yellow-500' : 'border border-gray-200');
                         return `
                             <div class="${highlight} rounded-md p-3">
-                                <div class="font-semibold text-2xl">${s.label}</div>
-                                <div class="text-2xl text-gray-600">投票戶數：${s.count}（${countRatio.toFixed(2)}%）</div>
-                                <div class="text-2xl text-gray-600">區分權比例：${ownershipRatio.toFixed(2)}%</div>
+                                <div class="font-semibold whitespace-nowrap text-xs sm:text-sm md:text-base lg:text-xl xl:text-2xl mb-2">${s.label}</div>
+                                <div class="text-gray-600 text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl mb-1">
+                                    <div class="whitespace-nowrap">投票戶數：</div>
+                                    <div class="whitespace-nowrap font-bold text-blue-600">${s.count}（${countRatio.toFixed(2)}%）</div>
+                                </div>
+                                <div class="text-gray-600 text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl">
+                                    <div class="whitespace-nowrap">區分權比例：</div>
+                                    <div class="whitespace-nowrap font-bold text-blue-600">${ownershipRatio.toFixed(2)}%</div>
+                                </div>
                             </div>
                         `;
                     }).join('');
@@ -4613,11 +4711,18 @@ const topicCells = currentTopics.map((t, tIdx) => {
                     const displayName = getTopicDisplayNamePublic(t, selectedIdx);
                     html = `
                         <div class="bg-white p-4 rounded-lg shadow-sm">
-                            <div class="font-semibold text-3xl mb-2">${displayName}</div>
-                            <div class="text-2xl text-gray-700 mb-1">主旨：${t.title || ''}</div>
-                            <div class="text-2xl text-gray-700 mb-1">說明：${t.description || '-'}</div>
-                            <div class="text-2xl text-gray-700 mb-3">提案人：${proposerText}</div>
-                            <div class="text-2xl text-gray-600">已報到應投票戶數：${eligibleCount}｜已投票：${votedEligibleHouseholds}｜未投票：${notVotedEligibleHouseholds}</div>
+                            <div class="font-semibold mb-2 whitespace-nowrap text-lg sm:text-xl md:text-2xl lg:text-3xl">${displayName}</div>
+                            <div class="text-gray-700 mb-1 whitespace-pre-wrap text-sm sm:text-base md:text-lg lg:text-xl"><span class="font-bold">主旨：</span>${t.title || ''}</div>
+                            <div class="text-gray-700 mb-1 whitespace-pre-wrap text-sm sm:text-base md:text-lg lg:text-xl"><span class="font-bold">說明：</span>${t.description || '-'}</div>
+                            <div class="text-gray-700 mb-3 whitespace-pre-wrap text-sm sm:text-base md:text-lg lg:text-xl"><span class="font-bold">提案人：</span>${proposerText}</div>
+                            <div class="text-gray-600 whitespace-nowrap text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl">
+                                <div>已報到應投票戶數：<span class="font-bold text-blue-600">${eligibleCount}</span></div>
+                                <div class="mt-1">
+                                    <span>已投票：<span class="font-bold text-blue-600">${votedEligibleHouseholds}</span></span>
+                                    <span class="mx-2">｜</span>
+                                    <span>未投票：<span class="font-bold text-blue-600">${notVotedEligibleHouseholds}</span></span>
+                                </div>
+                            </div>
                             <div class="grid gap-3 mt-3" style="grid-template-columns: repeat(${columns}, minmax(0, 1fr));">
                                 ${optsHtml}
                             </div>
@@ -4625,7 +4730,7 @@ const topicCells = currentTopics.map((t, tIdx) => {
                     `;
                 } else {
                     // List mode: single column for one topic per row
-                    publicDashboardContent.className = 'grid grid-cols-1 gap-6';
+                    publicDashboardContent.className = 'grid grid-cols-1 gap-6 flex-grow overflow-y-auto min-h-0';
                     // 列表模式：原本的全部議題一併呈現，加入切換控制與議題資訊
                     controlsHtml = `
                         <div class="relative w-full h-9">
@@ -4665,9 +4770,15 @@ const topicCells = currentTopics.map((t, tIdx) => {
                             const highlight = meetsBoth ? 'border-2 border-green-500' : (meetsEither ? 'border-2 border-yellow-500' : 'border border-gray-200');
                             return `
                                 <div class="${highlight} rounded-md p-3">
-                                    <div class="font-semibold text-2xl">${s.label}</div>
-                                    <div class="text-2xl text-gray-600">投票戶數：${s.count}（${countRatio.toFixed(2)}%）</div>
-                                    <div class="text-2xl text-gray-600">區分權比例：${ownershipRatio.toFixed(2)}%</div>
+                                    <div class="font-semibold whitespace-nowrap text-xs sm:text-sm md:text-base lg:text-xl xl:text-2xl mb-2">${s.label}</div>
+                                    <div class="text-gray-600 text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl mb-1">
+                                        <div class="whitespace-nowrap">投票戶數：</div>
+                                        <div class="whitespace-nowrap font-bold text-blue-600">${s.count}（${countRatio.toFixed(2)}%）</div>
+                                    </div>
+                                    <div class="text-gray-600 text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl">
+                                        <div class="whitespace-nowrap">區分權比例：</div>
+                                        <div class="whitespace-nowrap font-bold text-blue-600">${ownershipRatio.toFixed(2)}%</div>
+                                    </div>
                                 </div>
                             `;
                         }).join('');
@@ -4677,10 +4788,17 @@ const topicCells = currentTopics.map((t, tIdx) => {
                             <div class="bg-white p-4 rounded-lg shadow-sm">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <div class="font-semibold text-3xl">${displayName}</div>
+                                        <div class="font-semibold whitespace-nowrap text-lg sm:text-xl md:text-2xl lg:text-3xl">${displayName}</div>
                                     </div>
                                     <div class="flex items-center gap-2">
-                                        <div class="text-2xl text-gray-600">已報到應投票戶數：${eligibleCount}｜已投票：${votedEligibleHouseholds}｜未投票：${notVotedEligibleHouseholds}</div>
+                                        <div class="text-gray-600 whitespace-nowrap text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl text-right">
+                                            <div>已報到應投票戶數：<span class="font-bold text-blue-600">${eligibleCount}</span></div>
+                                            <div class="mt-1">
+                                                <span>已投票：<span class="font-bold text-blue-600">${votedEligibleHouseholds}</span></span>
+                                                <span class="mx-2">｜</span>
+                                                <span>未投票：<span class="font-bold text-blue-600">${notVotedEligibleHouseholds}</span></span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="grid gap-3 mt-3" style="grid-template-columns: repeat(${optionStats.length || 1}, minmax(0, 1fr));">
